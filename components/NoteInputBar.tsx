@@ -119,9 +119,9 @@ export default function NoteInputBar({
   const displayText = text + interimText;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 pb-12 safe-area-bottom">
+    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 pb-12 safe-area-bottom z-50">
       <form onSubmit={handleSubmit} className="flex items-start space-x-3">
-        <div className="flex items-center px-6 pb-3 space-x-2 w-full">
+        <div className="flex items-center px-6 pb-3 space-x-3 w-full">
           <div
             className="flex-shrink-0 flex pb-2 items-start justify-center transition-colors"
             title={
@@ -136,27 +136,6 @@ export default function NoteInputBar({
             />
           </div>
           
-          {isClient && speechEnabled && speechService.isSupported() && (
-            <button
-              type="button"
-              onClick={handleMicClick}
-              className={`flex-shrink-0 flex pb-2 items-start justify-center transition-colors ${
-                isListening 
-                  ? "text-red-500 animate-pulse" 
-                  : "text-blue-500 hover:text-blue-600"
-              }`}
-              title={isListening ? "録音中 (クリックで停止)" : "音声入力開始"}
-              style={{ width: "28px" }}
-              disabled={isSubmitting}
-            >
-              {isListening ? (
-                <FiMicOff className="h-7 w-7" />
-              ) : (
-                <FiMic className="h-7 w-7" />
-              )}
-            </button>
-          )}
-          
           <div className="flex-1 relative">
             <textarea
               value={displayText}
@@ -169,9 +148,7 @@ export default function NoteInputBar({
               placeholder={
                 isListening 
                   ? "音声を認識中..." 
-                  : isClient && speechEnabled && speechService.isSupported() 
-                    ? "メモを入力またはマイクで録音...（Shift+Enterで送信）"
-                    : placeholder
+                  : placeholder
               }
               className={`w-full px-4 py-2 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none ${
                 isListening ? "bg-red-50 border-red-200" : ""
@@ -190,6 +167,29 @@ export default function NoteInputBar({
               </div>
             )}
           </div>
+          
+          {/* 音声入力ボタン */}
+          {isClient && speechEnabled && speechService.isSupported() && (
+            <button
+              type="button"
+              onClick={handleMicClick}
+              disabled={isSubmitting}
+              className={`flex-shrink-0 flex mb-1 items-center justify-center rounded-lg transition-colors mt-0 ${
+                isListening
+                  ? "bg-red-500 text-white animate-pulse hover:bg-red-600"
+                  : "bg-gray-500 text-white hover:bg-gray-600"
+              } disabled:bg-gray-300 disabled:cursor-not-allowed`}
+              title={isListening ? "録音中 (クリックで停止)" : "音声入力"}
+              style={{ height: "40px", width: "40px" }}
+            >
+              {isListening ? (
+                <FiMicOff className="h-4 w-4" />
+              ) : (
+                <FiMic className="h-4 w-4" />
+              )}
+            </button>
+          )}
+          
           <button
             type="submit"
             disabled={!text.trim() || isSubmitting}

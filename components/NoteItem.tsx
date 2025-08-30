@@ -40,6 +40,11 @@ export default function NoteItem({ note, onPin, onDelete, onEditTags }: NoteItem
     }
   };
 
+  const handleSwipeDelete = () => {
+    onDelete(note.id);
+    setTranslateX(0);
+  };
+
   const handleSaveTags = () => {
     const tags = tagInput
       .split(",")
@@ -69,8 +74,14 @@ export default function NoteItem({ note, onPin, onDelete, onEditTags }: NoteItem
   return (
     <div className="relative overflow-hidden rounded-lg">
       {/* Swipe actions background */}
-      <div className="absolute inset-0 bg-red-500 flex items-center justify-end pr-4 rounded-lg">
-        <FiTrash className="text-white h-5 w-5" />
+      <div className="absolute inset-0 bg-red-500 flex items-center justify-end pr-6 rounded-lg">
+        <button
+          onClick={handleSwipeDelete}
+          className="flex items-center space-x-2 bg-red-600 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-red-700 active:bg-red-800 transition-colors"
+        >
+          <FiTrash className="h-5 w-5" />
+          <span className="text-sm font-medium">削除</span>
+        </button>
       </div>
 
       {/* Main note content */}
@@ -120,13 +131,6 @@ export default function NoteItem({ note, onPin, onDelete, onEditTags }: NoteItem
               title="タグ編集"
             >
               <FiTag className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => onDelete(note.id)}
-              className="p-1 rounded text-gray-400 hover:text-red-600"
-              title="削除"
-            >
-              <FiTrash className="h-4 w-4" />
             </button>
           </div>
         </div>

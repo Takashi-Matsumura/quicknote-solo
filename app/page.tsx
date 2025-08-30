@@ -182,9 +182,9 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-screen bg-gray-50 flex flex-col">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-4 py-3">
+      <header className="bg-white border-b border-gray-200 px-4 py-3 flex-shrink-0">
         <div className="flex items-center justify-between">
           <h1 className="text-lg font-semibold text-gray-900">QuickNote Solo</h1>
           <div className="flex items-center space-x-2">
@@ -205,15 +205,9 @@ export default function HomePage() {
       </header>
 
       {/* Search and Filters */}
-      <div className="bg-white border-b border-gray-200 p-4 space-y-4">
-        <SearchBar
-          value={searchText}
-          onChange={setSearchText}
-          onClear={clearSearch}
-        />
-        
-        {/* Period Filter */}
-        <div className="flex space-x-2">
+      <div className="bg-white border-b border-gray-200 p-4 space-y-4 flex-shrink-0">
+        {/* Period Filter with Search */}
+        <div className="flex items-center space-x-2">
           {(["today", "7d", "30d", "all"] as const).map((p) => (
             <button
               key={p}
@@ -232,6 +226,12 @@ export default function HomePage() {
               }[p]}
             </button>
           ))}
+          
+          <SearchBar
+            value={searchText}
+            onChange={setSearchText}
+            onClear={clearSearch}
+          />
         </div>
 
         <TagChips
@@ -243,7 +243,7 @@ export default function HomePage() {
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 px-4 py-6 pb-32">
+      <main className="flex-1 px-4 py-6 overflow-y-auto pb-4">
         <NoteList
           notes={notes}
           onPin={handlePinNote}
@@ -272,6 +272,7 @@ export default function HomePage() {
         isOpen={confirmDialog.isOpen}
         title={confirmDialog.title}
         message={confirmDialog.message}
+        confirmText="削除"
         onConfirm={confirmDialog.onConfirm}
         onCancel={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
       />
