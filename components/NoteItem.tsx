@@ -67,15 +67,15 @@ export default function NoteItem({ note, onPin, onDelete, onEditTags }: NoteItem
   };
 
   return (
-    <div className="relative overflow-hidden">
+    <div className="relative overflow-hidden rounded-lg">
       {/* Swipe actions background */}
-      <div className="absolute inset-0 bg-red-500 flex items-center justify-end pr-4">
+      <div className="absolute inset-0 bg-red-500 flex items-center justify-end pr-4 rounded-lg">
         <FiTrash className="text-white h-5 w-5" />
       </div>
 
       {/* Main note content */}
       <div
-        className="bg-white border border-gray-200 rounded-lg p-4 transition-transform duration-200"
+        className="bg-white border border-gray-200 rounded-lg p-4 transition-transform duration-200 relative z-10"
         style={{ transform: `translateX(${translateX}px)` }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}

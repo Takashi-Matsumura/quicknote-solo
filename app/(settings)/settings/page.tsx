@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FiDownload, FiUpload, FiTrash2, FiArrowLeft, FiMapPin } from "react-icons/fi";
+import { FiDownload, FiUpload, FiTrash2, FiArrowLeft, FiMapPin, FiMic } from "react-icons/fi";
 import Link from "next/link";
 
 import { getAllNotes, clearAllNotes } from "@/lib/db/indexedDb";
@@ -10,6 +10,8 @@ import { downloadCsvFile } from "@/lib/export/csv";
 import { downloadMarkdownFile } from "@/lib/export/md";
 import { importFromJson, readFileAsText } from "@/lib/import/json";
 import { getLocationSetting, setLocationSetting } from "@/lib/settings/locationSettings";
+import { getSpeechEnabled, setSpeechEnabled, getSpeechAutoSubmit, setSpeechAutoSubmit, getSpeechLanguage, setSpeechLanguage, SUPPORTED_LANGUAGES } from "@/lib/settings/speechSettings";
+import { getSpeechRecognitionService } from "@/lib/speech/speechRecognition";
 import Toast from "@/components/Toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
 
@@ -22,6 +24,11 @@ export default function SettingsPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [locationEnabled, setLocationEnabled] = useState(true);
+  const [speechEnabled, setSpeechEnabledState] = useState(true);
+  const [speechAutoSubmit, setSpeechAutoSubmitState] = useState(false);
+  const [speechLanguage, setSpeechLanguageState] = useState("ja-JP");
+  const [speechService] = useState(() => getSpeechRecognitionService());
+  const [isClient, setIsClient] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
@@ -36,7 +43,11 @@ export default function SettingsPage() {
   });
 
   useEffect(() => {
+    setIsClient(true);
     setLocationEnabled(getLocationSetting());
+    setSpeechEnabledState(getSpeechEnabled());
+    setSpeechAutoSubmitState(getSpeechAutoSubmit());
+    setSpeechLanguageState(getSpeechLanguage());
   }, []);
 
   const showToast = (message: string, type: ToastState["type"] = "info") => {
@@ -50,6 +61,31 @@ export default function SettingsPage() {
       enabled ? "位置情報の記録を有効にしました" : "位置情報の記録を無効にしました",
       "success"
     );
+  };
+
+  const handleSpeechToggle = (enabled: boolean) => {
+    setSpeechEnabledState(enabled);
+    setSpeechEnabled(enabled);
+    showToast(
+      enabled ? "音声入力を有効にしました" : "音声入力を無効にしました",
+      "success"
+    );
+  };
+
+  const handleSpeechAutoSubmitToggle = (enabled: boolean) => {
+    setSpeechAutoSubmitState(enabled);
+    setSpeechAutoSubmit(enabled);
+    showToast(
+      enabled ? "音声認識後の自動送信を有効にしました" : "音声認識後の自動送信を無効にしました",
+      "success"
+    );
+  };
+
+  const handleLanguageChange = (language: string) => {
+    setSpeechLanguageState(language);
+    setSpeechLanguage(language);
+    const langName = SUPPORTED_LANGUAGES.find(l => l.code === language)?.name || language;
+    showToast(`音声認識言語を${langName}に設定しました`, "success");
   };
 
   const handleExport = async (format: "json" | "csv" | "md") => {
@@ -187,6 +223,91 @@ export default function SettingsPage() {
                 <p className="text-xs text-blue-700">
                   位置情報の取得には端末の許可が必要です。初回アクセス時に許可を求められます。
                 </p>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Speech Recognition Settings Section */}
+        <section className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-medium text-gray-900">音声入力設定</h2>
+            <p className="mt-1 text-sm text-gray-600">音声によるメモ入力を設定します</p>
+          </div>
+          <div className="p-6 space-y-6">
+            {/* Speech Recognition Toggle */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <FiMic className="h-5 w-5 text-gray-600 mr-3" />
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900">音声入力を有効化</h3>
+                  <p className="text-xs text-gray-500 mt-1">
+                    マイクボタンで音声による文字入力ができます
+                  </p>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={speechEnabled}
+                  onChange={(e) => handleSpeechToggle(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+
+            {speechEnabled && (
+              <div className="space-y-4">
+                {/* Auto Submit Toggle */}
+                <div className="pl-8">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-900">音声認識後に自動送信</h4>
+                      <p className="text-xs text-gray-500 mt-1">
+                        音声入力完了後、自動でメモを保存します
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={speechAutoSubmit}
+                        onChange={(e) => handleSpeechAutoSubmitToggle(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Language Selection */}
+                <div className="pl-8">
+                  <h4 className="text-sm font-medium text-gray-900 mb-2">音声認識言語</h4>
+                  <select
+                    value={speechLanguage}
+                    onChange={(e) => handleLanguageChange(e.target.value)}
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  >
+                    {SUPPORTED_LANGUAGES.map((lang) => (
+                      <option key={lang.code} value={lang.code}>
+                        {lang.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Browser Support Info */}
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                  <p className="text-xs text-blue-700">
+                    {isClient 
+                      ? (speechService.isSupported() 
+                          ? "音声認識が利用可能です。マイクへのアクセス許可が必要です。"
+                          : "お使いのブラウザは音声認識をサポートしていません。Chrome、Safari、Edgeをお試しください。"
+                        )
+                      : "ブラウザの対応状況を確認中..."
+                    }
+                  </p>
+                </div>
               </div>
             )}
           </div>

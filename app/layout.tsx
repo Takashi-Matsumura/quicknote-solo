@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import PWAProvider from "@/components/PWAProvider";
@@ -17,19 +17,20 @@ export const metadata: Metadata = {
   title: "QuickNote Solo",
   description: "個人用1行メモPWA - オフラインでも使える簡単メモアプリ",
   manifest: "/manifest.json",
-  themeColor: "#3b82f6",
   appleWebApp: {
     title: "QuickNote Solo",
     statusBarStyle: "default",
     capable: true,
   },
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-    viewportFit: "cover",
-  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+  themeColor: "#3b82f6",
 };
 
 export default function RootLayout({
