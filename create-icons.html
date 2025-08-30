@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PWA Icon Generator</title>
+    <style>
+        canvas { border: 1px solid #ccc; margin: 10px; }
+        .icon-preview { display: inline-block; margin: 10px; text-align: center; }
+    </style>
+</head>
+<body>
+    <h1>QuickNote Solo PWA Icons</h1>
+    <div id="icons"></div>
+    <button onclick="downloadAll()">Download All Icons</button>
+
+    <script>
+        const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+        const icons = {};
+
+        function createIcon(size) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            // Background (rounded rectangle)
+            const radius = size * 0.1;
+            ctx.fillStyle = '#3b82f6';
+            ctx.beginPath();
+            ctx.roundRect(0, 0, size, size, radius);
+            ctx.fill();
+
+            // Note lines
+            const lineColor = '#ffffff';
+            const lineWidth = Math.max(1, size / 100);
+            const margin = size * 0.15;
+            const lineSpacing = size * 0.12;
+            
+            ctx.strokeStyle = lineColor;
+            ctx.lineWidth = lineWidth;
+            
+            for (let i = 0; i < 5; i++) {
+                const y = margin + (i * lineSpacing);
+                ctx.beginPath();
+                ctx.moveTo(margin, y);
+                ctx.lineTo(size - margin, y);
+                ctx.stroke();
+            }
+
+            // Pen icon (simple)
+            const penSize = size * 0.25;
+            const penX = size - margin - penSize;
+            const penY = size - margin - penSize;
+            
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.roundRect(penX, penY, penSize * 0.3, penSize, penSize * 0.1);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.roundRect(penX + penSize * 0.1, penY - penSize * 0.2, penSize * 0.1, penSize * 0.3, penSize * 0.05);
+            ctx.fill();
+
+            return canvas;
+        }
+
+        function downloadCanvas(canvas, filename) {
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        function downloadAll() {
+            sizes.forEach(size => {
+                const canvas = icons[size];
+                downloadCanvas(canvas, `icon-${size}x${size}.png`);
+            });
+        }
+
+        // Create all icons
+        sizes.forEach(size => {
+            const canvas = createIcon(size);
+            icons[size] = canvas;
+            
+            const container = document.createElement('div');
+            container.className = 'icon-preview';
+            container.innerHTML = `<div>${size}x${size}</div>`;
+            container.appendChild(canvas);
+            
+            const downloadBtn = document.createElement('button');
+            downloadBtn.textContent = 'Download';
+            downloadBtn.onclick = () => downloadCanvas(canvas, `icon-${size}x${size}.png`);
+            container.appendChild(downloadBtn);
+            
+            document.getElementById('icons').appendChild(container);
+        });
+
+        // Create screenshot mockup
+        function createScreenshot() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 390;
+            canvas.height = 844;
+            const ctx = canvas.getContext('2d');
+
+            // Background
+            ctx.fillStyle = '#f9fafb';
+            ctx.fillRect(0, 0, 390, 844);
+
+            // Header
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, 390, 120);
+            ctx.fillStyle = '#000000';
+            ctx.font = '18px sans-serif';
+            ctx.fillText('QuickNote Solo', 20, 50);
+
+            // Search bar
+            ctx.fillStyle = '#f3f4f6';
+            ctx.fillRect(20, 70, 350, 40);
+            ctx.fillStyle = '#6b7280';
+            ctx.font = '14px sans-serif';
+            ctx.fillText('🔍 メモを検索...', 35, 93);
+
+            // Notes
+            const noteY = 140;
+            for (let i = 0; i < 4; i++) {
+                const y = noteY + (i * 80);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(20, y, 350, 70);
+                ctx.fillStyle = '#000000';
+                ctx.font = '16px sans-serif';
+                ctx.fillText(`サンプルメモ ${i + 1}`, 35, y + 25);
+                ctx.fillStyle = '#6b7280';
+                ctx.font = '12px sans-serif';
+                ctx.fillText('2025-01-01 12:00', 35, y + 45);
+            }
+
+            // Bottom input bar
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 750, 390, 94);
+            ctx.fillStyle = '#e5e7eb';
+            ctx.fillRect(20, 770, 300, 40);
+            ctx.fillStyle = '#6b7280';
+            ctx.font = '14px sans-serif';
+            ctx.fillText('メモを入力...', 35, 793);
+
+            // Send button
+            ctx.fillStyle = '#3b82f6';
+            ctx.fillRect(330, 770, 40, 40);
+
+            return canvas;
+        }
+
+        const screenshot = createScreenshot();
+        const screenshotContainer = document.createElement('div');
+        screenshotContainer.innerHTML = '<h2>Screenshot</h2>';
+        screenshotContainer.appendChild(screenshot);
+        const screenshotBtn = document.createElement('button');
+        screenshotBtn.textContent = 'Download Screenshot';
+        screenshotBtn.onclick = () => downloadCanvas(screenshot, 'screenshot-mobile.png');
+        screenshotContainer.appendChild(screenshotBtn);
+        document.body.appendChild(screenshotContainer);
+    </script>
+</body>
+</html>

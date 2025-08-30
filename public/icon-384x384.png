@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="192" height="192" viewBox="0 0 192 192" xmlns="http://www.w3.org/2000/svg">
+  <rect width="192" height="192" fill="#3b82f6"/>
+  <!-- Edit icon similar to FiEdit -->
+  <g transform="translate(96, 96)" stroke="white" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 -20h-40v40h40z"/>
+    <path d="M20 -20l12-12 8 8-12 12z"/>
+    <path d="M-8 8l-4 4h4v-4z"/>
+  </g>
+</svg>
