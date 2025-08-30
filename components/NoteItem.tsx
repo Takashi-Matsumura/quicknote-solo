@@ -26,15 +26,15 @@ export default function NoteItem({ note, onPin, onDelete, onEditTags }: NoteItem
     const currentX = e.touches[0].clientX;
     const diffX = currentX - startX;
     if (diffX < 0) {
-      setTranslateX(Math.max(diffX, -120));
+      setTranslateX(Math.max(diffX, -80));
     } else {
       setTranslateX(0);
     }
   };
 
   const handleTouchEnd = () => {
-    if (translateX < -60) {
-      setTranslateX(-120);
+    if (translateX < -40) {
+      setTranslateX(-80);
     } else {
       setTranslateX(0);
     }
@@ -43,6 +43,14 @@ export default function NoteItem({ note, onPin, onDelete, onEditTags }: NoteItem
   const handleSwipeDelete = () => {
     onDelete(note.id);
     setTranslateX(0);
+  };
+
+  const handleDoubleClick = () => {
+    if (translateX === 0) {
+      setTranslateX(-80);
+    } else {
+      setTranslateX(0);
+    }
   };
 
   const handleSaveTags = () => {
@@ -74,37 +82,38 @@ export default function NoteItem({ note, onPin, onDelete, onEditTags }: NoteItem
   return (
     <div className="relative overflow-hidden rounded-lg">
       {/* Swipe actions background */}
-      <div className="absolute inset-0 bg-red-500 flex items-center justify-end pr-6 rounded-lg">
+      <div className="absolute inset-0 bg-red-100 flex items-center justify-end pr-4 rounded-lg">
         <button
           onClick={handleSwipeDelete}
-          className="flex items-center space-x-2 bg-red-600 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-red-700 active:bg-red-800 transition-colors"
+          className="flex items-center justify-center bg-red-600 text-white w-12 h-12 rounded-lg shadow-lg hover:bg-red-700 active:bg-red-800 transition-colors"
         >
-          <FiTrash className="h-5 w-5" />
-          <span className="text-sm font-medium">削除</span>
+          <FiTrash className="h-6 w-6" />
         </button>
       </div>
 
       {/* Main note content */}
       <div
-        className="bg-white border border-gray-200 rounded-lg p-4 transition-transform duration-200 relative z-10"
+        className="bg-white border border-gray-200 rounded-lg p-4 transition-transform duration-200 relative z-10 cursor-pointer select-none"
         style={{ transform: `translateX(${translateX}px)` }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        onDoubleClick={handleDoubleClick}
+        title="ダブルクリックで削除メニューを表示"
       >
         <div className="flex items-start justify-between mb-2">
-          <div className="flex-1 min-w-0">
-            <p className="text-gray-900 text-sm break-words">{note.text}</p>
-            <div className="flex items-center text-xs text-gray-500 mt-1">
-              <span>{formatDate(note.createdAt)}</span>
+          <div className="flex-1 pr-2" style={{ minWidth: translateX < 0 ? '75%' : '80%', maxWidth: translateX < 0 ? '75%' : '80%' }}>
+            <p className="text-gray-900 text-sm break-words leading-relaxed whitespace-pre-wrap">{note.text}</p>
+            <div className={`flex items-center text-xs text-gray-500 mt-1 ${translateX < 0 ? 'flex-wrap' : ''}`}>
+              <span className="flex-shrink-0">{formatDate(note.createdAt)}</span>
               {note.location && (
                 <>
-                  <span className="mx-2">•</span>
+                  <span className="mx-2 flex-shrink-0">•</span>
                   <a
                     href={createMapUrl(note.location)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center text-blue-600 hover:text-blue-800"
+                    className="flex items-center text-blue-600 hover:text-blue-800 flex-shrink-0"
                   >
                     <FiMapPin className="h-3 w-3 mr-1" />
                     位置
@@ -113,24 +122,24 @@ export default function NoteItem({ note, onPin, onDelete, onEditTags }: NoteItem
               )}
             </div>
           </div>
-          <div className="flex items-center ml-2 space-x-1">
+          <div className={`flex items-center flex-shrink-0 ${translateX < 0 ? 'ml-1 space-x-0' : 'ml-2 space-x-1'}`}>
             <button
               onClick={() => onPin(note.id)}
-              className={`p-1 rounded ${
+              className={`${translateX < 0 ? 'p-0.5' : 'p-1'} rounded ${
                 note.pinned
                   ? "text-yellow-500 hover:text-yellow-600"
                   : "text-gray-400 hover:text-gray-600"
               }`}
               title={note.pinned ? "ピン留め解除" : "ピン留め"}
             >
-              <FiBookmark className="h-4 w-4" />
+              <FiBookmark className={`${translateX < 0 ? 'h-3 w-3' : 'h-4 w-4'}`} />
             </button>
             <button
               onClick={() => setIsEditingTags(!isEditingTags)}
-              className="p-1 rounded text-gray-400 hover:text-gray-600"
+              className={`${translateX < 0 ? 'p-0.5' : 'p-1'} rounded text-gray-400 hover:text-gray-600`}
               title="タグ編集"
             >
-              <FiTag className="h-4 w-4" />
+              <FiTag className={`${translateX < 0 ? 'h-3 w-3' : 'h-4 w-4'}`} />
             </button>
           </div>
         </div>

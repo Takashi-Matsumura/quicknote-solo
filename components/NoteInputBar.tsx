@@ -15,7 +15,7 @@ interface NoteInputBarProps {
 export default function NoteInputBar({
   onSubmit,
   isSubmitting = false,
-  placeholder = "メモを入力...（Shift+Enterで送信）",
+  placeholder = "メモを入力...（Enterで改行、Shift+Enterで送信）",
 }: NoteInputBarProps) {
   const [text, setText] = useState("");
   const [locationEnabled, setLocationEnabled] = useState(true);
@@ -67,6 +67,7 @@ export default function NoteInputBar({
       e.preventDefault();
       handleSubmit(e);
     }
+    // 通常のEnterキーは改行として処理（preventDefault しない）
   };
 
   const handleSpeechResult = useCallback((result: SpeechRecognitionResult) => {
