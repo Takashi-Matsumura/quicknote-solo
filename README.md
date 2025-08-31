@@ -18,6 +18,8 @@
 - **🖱️ PC対応**: ダブルクリックで削除メニュー表示
 - **☁️ クラウド同期**: Firebase連携でデバイス間同期（オプション）
 - **🔐 プライベート**: 個人のFirebaseプロジェクトで完全プライベート
+- **📋 ワンクリック設定**: Firebase ConsoleからJSON一括コピー&ペースト
+- **🔄 形式自動認識**: JavaScript/JSON形式を自動判別・変換
 - **📲 レスポンシブデザイン**: モバイルファースト設計
 
 ## 🛠️ 技術スタック
@@ -114,13 +116,45 @@ npm run format
 ### 5. アプリでFirebase設定
 
 1. QuickNote Solo を開き、**設定 → クラウドストレージ設定**
-2. Firebase設定にConfig情報を入力：
+2. Firebase設定の入力方法を選択：
+
+#### 📋 **JSON形式（推奨・ワンクリック設定）**
+- **JSON/手動切り替え**で「JSON」を選択
+- Firebase Console の Config を**そのままコピー&ペースト**
+
+**対応形式:**
+```javascript
+// JavaScript形式（Firebase Console からコピー）
+{
+  apiKey: "AIzaSyC...",
+  authDomain: "your-project.firebaseapp.com",
+  projectId: "your-project-id",
+  storageBucket: "your-project.appspot.com",
+  messagingSenderId: "123456789012",
+  appId: "1:123456789012:web:abcdef..."
+}
+
+// JSON形式
+{
+  "apiKey": "AIzaSyC...",
+  "authDomain": "your-project.firebaseapp.com",
+  "projectId": "your-project-id",
+  "storageBucket": "your-project.appspot.com",
+  "messagingSenderId": "123456789012",
+  "appId": "1:123456789012:web:abcdef..."
+}
+```
+
+#### ✏️ **手動入力形式**
+- **JSON/手動切り替え**で「手動」を選択
+- 各フィールドに個別入力：
    - **API Key**: `apiKey`の値
    - **Auth Domain**: `authDomain`の値
    - **Project ID**: `projectId`の値
    - **Storage Bucket**: `storageBucket`の値
    - **Messaging Sender ID**: `messagingSenderId`の値
    - **App ID**: `appId`の値
+
 3. **Firebaseに接続**をクリック
 4. **ストレージタイプ**を「Firebaseクラウド」に変更
 
@@ -153,6 +187,12 @@ service cloud.firestore {
 1. QuickNote Solo でメモを作成
 2. Firebase Console → **Firestore Database** → **データ**
 3. `notes`コレクションが自動作成され、メモが保存されていることを確認
+
+### 💡 **設定のコツ**
+- **📱 スマホ**: JSON形式でコピペが圧倒的に簡単
+- **🖥️ PC**: 手動入力でも問題なし
+- **🔍 デバッグ**: 設定画面下部の「現在の設定値」で確認
+- **⚡ 高速**: JavaScript形式も自動で正しく読み込まれます
 
 🎉 **設定完了！** これでデバイス間でメモが自動同期されます！
 
@@ -229,6 +269,13 @@ quicknote-solo/
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Takashi-Matsumura/quicknote-solo)
 
 ## ✨ 最新アップデート
+
+### v3.1.0 - Firebase 設定UI大幅改善
+- 📋 **JSON一括設定**: Firebase Console からのワンクリック設定
+- 🔄 **JavaScript形式対応**: クォートなしプロパティも自動認識
+- 📱 **スマホ最適化**: 6項目個別入力→1回コピペに簡素化
+- 🎯 **デバッグ機能**: リアルタイム設定値表示とログ出力
+- ✨ **UI切り替え**: JSON/手動入力の直感的モード切り替え
 
 ### v3.0.0 - Firebase クラウド同期対応
 - ☁️ **Firebase連携**: 個人のFirebaseプロジェクトでクラウド同期

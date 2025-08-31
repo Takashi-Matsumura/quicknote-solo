@@ -41,8 +41,10 @@ export default function SettingsPage() {
     messagingSenderId: "",
     appId: ""
   });
+  const [firebaseConfigJson, setFirebaseConfigJson] = useState("");
   const [firebaseEnabled, setFirebaseEnabledState] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [configInputMode, setConfigInputMode] = useState<"json" | "manual">("json");
   const [toast, setToast] = useState<ToastState | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
@@ -68,6 +70,8 @@ export default function SettingsPage() {
     setFirebaseEnabledState(fbSettings.enabled);
     if (fbSettings.config) {
       setFirebaseConfigState(fbSettings.config);
+      // configからJSONを生成
+      setFirebaseConfigJson(JSON.stringify(fbSettings.config, null, 2));
     }
     setStorageTypeState(getStorageType());
   }, []);
@@ -120,8 +124,15 @@ export default function SettingsPage() {
   };
 
   const handleFirebaseConnect = async () => {
+    console.log('Firebase config before connect:', firebaseConfig);
     if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
-      showToast("APIキーとプロジェクトIDは必須です", "error");
+      const errorMsg = `必須項目が不足しています: ${
+        !firebaseConfig.apiKey ? 'APIキー' : ''
+      }${!firebaseConfig.apiKey && !firebaseConfig.projectId ? ', ' : ''}${
+        !firebaseConfig.projectId ? 'プロジェクトID' : ''
+      }`;
+      console.error('Firebase connection failed:', errorMsg);
+      showToast(errorMsg, "error");
       return;
     }
 
@@ -165,10 +176,118 @@ export default function SettingsPage() {
   };
 
   const handleConfigChange = (field: keyof FirebaseConfig, value: string) => {
-    setFirebaseConfigState(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    setFirebaseConfigState(prev => {
+      const newConfig = {
+        ...prev,
+        [field]: value
+      };
+      // 手動入力モードでもJSONを同期更新
+      setFirebaseConfigJson(JSON.stringify(newConfig, null, 2));
+      return newConfig;
+    });
+  };
+
+  const handleJsonConfigChange = (value: string) => {
+    setFirebaseConfigJson(value);
+    
+    // JSONからFirebaseConfigに変換を試行
+    try {
+      if (value.trim()) {
+        console.log('Parsing JSON:', value);
+        
+        let jsonValue = value.trim();
+        
+        // JavaScript コード形式の場合、オブジェクト部分のみを抽出
+        if (jsonValue.includes('const') || jsonValue.includes('=')) {
+          const match = jsonValue.match(/=\s*({[\s\S]*?});?\s*$/);
+          if (match) {
+            jsonValue = match[1];
+            console.log('Extracted JSON from JS code:', jsonValue);
+          }
+        }
+        
+        let parsed;
+        try {
+          // 通常のJSONとして解析を試行
+          parsed = JSON.parse(jsonValue);
+        } catch {
+          console.log('Standard JSON parse failed, trying JavaScript object evaluation');
+          
+          // JavaScript形式のオブジェクトを安全に評価（基本的な検証を実行）
+          if (!jsonValue.includes('function') && !jsonValue.includes('eval') && !jsonValue.includes('require') && 
+              !jsonValue.includes('import') && !jsonValue.includes('window') && !jsonValue.includes('document')) {
+            try {
+              // Functionコンストラクターを使用してより安全に評価
+              const fn = new Function(`return ${jsonValue}`);
+              parsed = fn();
+              console.log('JavaScript object evaluated successfully:', parsed);
+            } catch (evalError) {
+              console.error('Both JSON parse and Function evaluation failed:', evalError);
+              throw evalError;
+            }
+          } else {
+            console.error('Unsafe JavaScript code detected');
+            throw new Error('Unsafe JavaScript code detected');
+          }
+        }
+        
+        console.log('Parsed JSON:', parsed);
+        
+        // より柔軟な設定対応
+        let config = parsed;
+        
+        // Firebase Console からのコピーで "const firebaseConfig = " が含まれている場合への対応
+        if (typeof parsed === 'object' && parsed.firebaseConfig) {
+          config = parsed.firebaseConfig;
+        }
+        
+        // JavaScript コードとしてペーストされた場合のフィールド名変換は不要
+        
+        console.log('Config object:', config);
+        
+        // 必須フィールドのチェック（空文字列もチェック）
+        const hasApiKey = config.apiKey && config.apiKey.trim() !== '';
+        const hasProjectId = config.projectId && config.projectId.trim() !== '';
+        
+        if (hasApiKey && hasProjectId) {
+          console.log('Setting Firebase config from JSON');
+          const newConfig = {
+            apiKey: (config.apiKey || "").trim(),
+            authDomain: (config.authDomain || "").trim(),
+            projectId: (config.projectId || "").trim(),
+            storageBucket: (config.storageBucket || "").trim(),
+            messagingSenderId: (config.messagingSenderId || "").trim(),
+            appId: (config.appId || "").trim()
+          };
+          console.log('New config to be set:', newConfig);
+          
+          // React state の更新を確認するためのログ
+          setTimeout(() => {
+            console.log('State should be updated now. Current firebaseConfig state:', {
+              apiKey: newConfig.apiKey,
+              projectId: newConfig.projectId
+            });
+          }, 100);
+          
+          setFirebaseConfigState(newConfig);
+          
+          // 値が正しく設定されたことを確認するためのトースト表示
+          if (newConfig.apiKey && newConfig.projectId) {
+            showToast(`設定を読み込みました: ${newConfig.projectId}`, "success");
+          }
+        } else {
+          console.warn('Missing required fields:', { 
+            apiKey: config.apiKey, 
+            projectId: config.projectId,
+            hasApiKey,
+            hasProjectId
+          });
+        }
+      }
+    } catch (error) {
+      console.error('JSON parse error:', error);
+      // JSONパースエラーは無視（入力中の場合があるため）
+    }
   };
 
   const handleExport = async (format: "json" | "csv" | "md") => {
@@ -441,87 +560,186 @@ export default function SettingsPage() {
 
             {/* Firebase Configuration */}
             <div className="space-y-4">
-              <h3 className="text-sm font-medium text-gray-900">Firebase設定</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium text-gray-900">Firebase設定</h3>
+                {!firebaseEnabled && (
+                  <div className="flex text-xs">
+                    <button
+                      onClick={() => setConfigInputMode("json")}
+                      className={`px-2 py-1 rounded-l-md border ${
+                        configInputMode === "json"
+                          ? "bg-blue-100 text-blue-800 border-blue-300"
+                          : "bg-gray-100 text-gray-600 border-gray-300"
+                      }`}
+                    >
+                      JSON
+                    </button>
+                    <button
+                      onClick={() => setConfigInputMode("manual")}
+                      className={`px-2 py-1 rounded-r-md border-l-0 border ${
+                        configInputMode === "manual"
+                          ? "bg-blue-100 text-blue-800 border-blue-300"
+                          : "bg-gray-100 text-gray-600 border-gray-300"
+                      }`}
+                    >
+                      手動
+                    </button>
+                  </div>
+                )}
+              </div>
               
               {!firebaseEnabled ? (
                 <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      API Key *
-                    </label>
-                    <input
-                      type="text"
-                      value={firebaseConfig.apiKey}
-                      onChange={(e) => handleConfigChange('apiKey', e.target.value)}
-                      placeholder="AIzaSyC..."
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Auth Domain
-                    </label>
-                    <input
-                      type="text"
-                      value={firebaseConfig.authDomain}
-                      onChange={(e) => handleConfigChange('authDomain', e.target.value)}
-                      placeholder="your-project.firebaseapp.com"
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Project ID *
-                    </label>
-                    <input
-                      type="text"
-                      value={firebaseConfig.projectId}
-                      onChange={(e) => handleConfigChange('projectId', e.target.value)}
-                      placeholder="your-project-id"
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Storage Bucket
-                    </label>
-                    <input
-                      type="text"
-                      value={firebaseConfig.storageBucket}
-                      onChange={(e) => handleConfigChange('storageBucket', e.target.value)}
-                      placeholder="your-project.appspot.com"
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Messaging Sender ID
-                    </label>
-                    <input
-                      type="text"
-                      value={firebaseConfig.messagingSenderId}
-                      onChange={(e) => handleConfigChange('messagingSenderId', e.target.value)}
-                      placeholder="123456789012"
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      App ID
-                    </label>
-                    <input
-                      type="text"
-                      value={firebaseConfig.appId}
-                      onChange={(e) => handleConfigChange('appId', e.target.value)}
-                      placeholder="1:123456789012:web:abc123def456"
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    />
-                  </div>
+                  {configInputMode === "json" ? (
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Firebase Config (JSON) *
+                      </label>
+                      <textarea
+                        value={firebaseConfigJson}
+                        onChange={(e) => handleJsonConfigChange(e.target.value)}
+                        placeholder={`{
+  "apiKey": "AIzaSyC...",
+  "authDomain": "your-project.firebaseapp.com",
+  "projectId": "your-project-id",
+  "storageBucket": "your-project.appspot.com",
+  "messagingSenderId": "123456789012",
+  "appId": "1:123456789012:web:abcdef..."
+}
+
+または JavaScript形式:
+const firebaseConfig = {
+  apiKey: "AIzaSyC...",
+  authDomain: "your-project.firebaseapp.com",
+  ...
+};`}
+                        rows={8}
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm font-mono"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Firebase Console → プロジェクト設定 → Config から JSON または JavaScript コードをコピー&ペースト
+                      </p>
+                      
+                      {/* デバッグ情報 */}
+                      {isClient && (
+                        <div className="mt-2 p-2 bg-gray-100 rounded text-xs space-y-1">
+                          <div><strong>現在の設定値:</strong></div>
+                          <div>API Key: {firebaseConfig.apiKey ? `${firebaseConfig.apiKey.substring(0, 10)}...` : '未設定'}</div>
+                          <div>Project ID: {firebaseConfig.projectId || '未設定'}</div>
+                          <div>Auth Domain: {firebaseConfig.authDomain || '未設定'}</div>
+                          <div className="pt-1 space-x-2">
+                            <button 
+                              type="button"
+                              onClick={() => {
+                                console.log('Current firebaseConfig state:', firebaseConfig);
+                                console.log('Current JSON input:', firebaseConfigJson);
+                              }}
+                              className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs"
+                            >
+                              コンソールにログ出力
+                            </button>
+                            <button 
+                              type="button"
+                              onClick={() => {
+                                const testJson = `{
+  "apiKey": "test-api-key",
+  "authDomain": "test-project.firebaseapp.com",
+                                                   "projectId": "test-project",
+  "storageBucket": "test-project.appspot.com",
+  "messagingSenderId": "123456789012",
+  "appId": "1:123456789012:web:abc123"
+}`;
+                                handleJsonConfigChange(testJson);
+                              }}
+                              className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs"
+                            >
+                              テスト用JSON投入
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          API Key *
+                        </label>
+                        <input
+                          type="text"
+                          value={firebaseConfig.apiKey}
+                          onChange={(e) => handleConfigChange('apiKey', e.target.value)}
+                          placeholder="AIzaSyC..."
+                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Auth Domain
+                        </label>
+                        <input
+                          type="text"
+                          value={firebaseConfig.authDomain}
+                          onChange={(e) => handleConfigChange('authDomain', e.target.value)}
+                          placeholder="your-project.firebaseapp.com"
+                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Project ID *
+                        </label>
+                        <input
+                          type="text"
+                          value={firebaseConfig.projectId}
+                          onChange={(e) => handleConfigChange('projectId', e.target.value)}
+                          placeholder="your-project-id"
+                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Storage Bucket
+                        </label>
+                        <input
+                          type="text"
+                          value={firebaseConfig.storageBucket}
+                          onChange={(e) => handleConfigChange('storageBucket', e.target.value)}
+                          placeholder="your-project.appspot.com"
+                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Messaging Sender ID
+                        </label>
+                        <input
+                          type="text"
+                          value={firebaseConfig.messagingSenderId}
+                          onChange={(e) => handleConfigChange('messagingSenderId', e.target.value)}
+                          placeholder="123456789012"
+                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          App ID
+                        </label>
+                        <input
+                          type="text"
+                          value={firebaseConfig.appId}
+                          onChange={(e) => handleConfigChange('appId', e.target.value)}
+                          placeholder="1:123456789012:web:abc123def456"
+                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        />
+                      </div>
+                    </div>
+                  )}
                   
                   <button
                     onClick={handleFirebaseConnect}
@@ -554,7 +772,8 @@ export default function SettingsPage() {
                   1. Firebase Consoleでプロジェクト作成<br />
                   2. Firestoreを有効化<br />
                   3. ウェブアプリを追加してConfig情報を取得<br />
-                  4. 上記フィールドに入力して接続
+                  4. <strong>JSON</strong>: Config全体をコピー&ペースト（推奨）<br />
+                  5. <strong>手動</strong>: 各フィールドに個別入力
                 </p>
               </div>
             </div>
