@@ -4,13 +4,16 @@ import { useState, useEffect } from "react";
 import { FiDownload, FiUpload, FiTrash2, FiArrowLeft, FiMapPin, FiMic } from "react-icons/fi";
 import Link from "next/link";
 
-import { getAllNotes, clearAllNotes } from "@/lib/db/indexedDb";
+import { getAllNotes, clearAllNotes } from "@/lib/db/database";
 import { downloadJsonFile } from "@/lib/export/json";
 import { downloadCsvFile } from "@/lib/export/csv";
 import { downloadMarkdownFile } from "@/lib/export/md";
 import { importFromJson, readFileAsText } from "@/lib/import/json";
 import { getLocationSetting, setLocationSetting } from "@/lib/settings/locationSettings";
 import { getSpeechEnabled, setSpeechEnabled, getSpeechAutoSubmit, setSpeechAutoSubmit, getSpeechLanguage, setSpeechLanguage, SUPPORTED_LANGUAGES } from "@/lib/settings/speechSettings";
+import { getFirebaseSettings, setFirebaseSettings, getStorageType, setStorageType, type StorageType } from "@/lib/settings/firebaseSettings";
+import { initializeFirebase, resetFirebase, type FirebaseConfig } from "@/lib/firebase/config";
+import { initializeAuth } from "@/lib/firebase/auth";
 import { getSpeechRecognitionService } from "@/lib/speech/speechRecognition";
 import Toast from "@/components/Toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -29,6 +32,17 @@ export default function SettingsPage() {
   const [speechLanguage, setSpeechLanguageState] = useState("ja-JP");
   const [speechService] = useState(() => getSpeechRecognitionService());
   const [isClient, setIsClient] = useState(false);
+  const [storageType, setStorageTypeState] = useState<StorageType>("local");
+  const [firebaseConfig, setFirebaseConfigState] = useState<FirebaseConfig>({
+    apiKey: "",
+    authDomain: "",
+    projectId: "",
+    storageBucket: "",
+    messagingSenderId: "",
+    appId: ""
+  });
+  const [firebaseEnabled, setFirebaseEnabledState] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
@@ -48,6 +62,14 @@ export default function SettingsPage() {
     setSpeechEnabledState(getSpeechEnabled());
     setSpeechAutoSubmitState(getSpeechAutoSubmit());
     setSpeechLanguageState(getSpeechLanguage());
+    
+    // Firebase設定を読み込み
+    const fbSettings = getFirebaseSettings();
+    setFirebaseEnabledState(fbSettings.enabled);
+    if (fbSettings.config) {
+      setFirebaseConfigState(fbSettings.config);
+    }
+    setStorageTypeState(getStorageType());
   }, []);
 
   const showToast = (message: string, type: ToastState["type"] = "info") => {
@@ -86,6 +108,67 @@ export default function SettingsPage() {
     setSpeechLanguage(language);
     const langName = SUPPORTED_LANGUAGES.find(l => l.code === language)?.name || language;
     showToast(`音声認識言語を${langName}に設定しました`, "success");
+  };
+
+  const handleStorageTypeChange = (type: StorageType) => {
+    setStorageTypeState(type);
+    setStorageType(type);
+    showToast(
+      type === "firebase" ? "Firebaseストレージに切り替えました" : "ローカルストレージに切り替えました",
+      "success"
+    );
+  };
+
+  const handleFirebaseConnect = async () => {
+    if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+      showToast("APIキーとプロジェクトIDは必須です", "error");
+      return;
+    }
+
+    setIsConnecting(true);
+    
+    try {
+      const success = initializeFirebase(firebaseConfig);
+      
+      if (success) {
+        // Firebase認証を初期化
+        const authUser = await initializeAuth();
+        
+        if (authUser) {
+          setFirebaseEnabledState(true);
+          setFirebaseSettings({
+            enabled: true,
+            config: firebaseConfig
+          });
+          showToast("Firebaseに接続しました", "success");
+        } else {
+          showToast("Firebase認証に失敗しました", "error");
+        }
+      } else {
+        showToast("Firebase接続に失敗しました", "error");
+      }
+    } catch (error) {
+      console.error("Firebase connection failed:", error);
+      showToast("Firebase接続エラー", "error");
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  const handleFirebaseDisconnect = () => {
+    resetFirebase();
+    setFirebaseEnabledState(false);
+    setFirebaseSettings({ enabled: false, config: null });
+    setStorageTypeState("local");
+    setStorageType("local");
+    showToast("Firebaseから切断しました", "success");
+  };
+
+  const handleConfigChange = (field: keyof FirebaseConfig, value: string) => {
+    setFirebaseConfigState(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   const handleExport = async (format: "json" | "csv" | "md") => {
@@ -313,6 +396,171 @@ export default function SettingsPage() {
           </div>
         </section>
 
+        {/* Firebase Settings Section */}
+        <section className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-medium text-gray-900">クラウドストレージ設定</h2>
+            <p className="mt-1 text-sm text-gray-600">Firebaseでデバイス間同期とクラウドバックアップを利用します</p>
+          </div>
+          <div className="p-6 space-y-6">
+            {/* Storage Type Selection */}
+            <div>
+              <h3 className="text-sm font-medium text-gray-900 mb-3">ストレージタイプ</h3>
+              <div className="space-y-2">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="storageType"
+                    value="local"
+                    checked={storageType === "local"}
+                    onChange={(e) => handleStorageTypeChange(e.target.value as StorageType)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                  />
+                  <div className="ml-3">
+                    <span className="text-sm font-medium text-gray-900">ローカルストレージ</span>
+                    <p className="text-xs text-gray-500">ブラウザ内のみに保存（デフォルト）</p>
+                  </div>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="storageType"
+                    value="firebase"
+                    checked={storageType === "firebase"}
+                    onChange={(e) => handleStorageTypeChange(e.target.value as StorageType)}
+                    disabled={!firebaseEnabled}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 disabled:opacity-50"
+                  />
+                  <div className="ml-3">
+                    <span className="text-sm font-medium text-gray-900">Firebaseクラウド</span>
+                    <p className="text-xs text-gray-500">デバイス間同期とクラウドバックアップ</p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* Firebase Configuration */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium text-gray-900">Firebase設定</h3>
+              
+              {!firebaseEnabled ? (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      API Key *
+                    </label>
+                    <input
+                      type="text"
+                      value={firebaseConfig.apiKey}
+                      onChange={(e) => handleConfigChange('apiKey', e.target.value)}
+                      placeholder="AIzaSyC..."
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Auth Domain
+                    </label>
+                    <input
+                      type="text"
+                      value={firebaseConfig.authDomain}
+                      onChange={(e) => handleConfigChange('authDomain', e.target.value)}
+                      placeholder="your-project.firebaseapp.com"
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Project ID *
+                    </label>
+                    <input
+                      type="text"
+                      value={firebaseConfig.projectId}
+                      onChange={(e) => handleConfigChange('projectId', e.target.value)}
+                      placeholder="your-project-id"
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Storage Bucket
+                    </label>
+                    <input
+                      type="text"
+                      value={firebaseConfig.storageBucket}
+                      onChange={(e) => handleConfigChange('storageBucket', e.target.value)}
+                      placeholder="your-project.appspot.com"
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Messaging Sender ID
+                    </label>
+                    <input
+                      type="text"
+                      value={firebaseConfig.messagingSenderId}
+                      onChange={(e) => handleConfigChange('messagingSenderId', e.target.value)}
+                      placeholder="123456789012"
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      App ID
+                    </label>
+                    <input
+                      type="text"
+                      value={firebaseConfig.appId}
+                      onChange={(e) => handleConfigChange('appId', e.target.value)}
+                      placeholder="1:123456789012:web:abc123def456"
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    />
+                  </div>
+                  
+                  <button
+                    onClick={handleFirebaseConnect}
+                    disabled={isConnecting}
+                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                  >
+                    {isConnecting ? "接続中..." : "Firebaseに接続"}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                    <div>
+                      <p className="text-sm font-medium text-green-900">Firebase接続中</p>
+                      <p className="text-xs text-green-700">プロジェクト: {firebaseConfig.projectId}</p>
+                    </div>
+                    <button
+                      onClick={handleFirebaseDisconnect}
+                      className="px-3 py-1 text-xs font-medium text-red-600 bg-white border border-red-300 rounded hover:bg-red-50"
+                    >
+                      切断
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                <p className="text-xs text-blue-700">
+                  <strong>Firebase設定方法:</strong><br />
+                  1. Firebase Consoleでプロジェクト作成<br />
+                  2. Firestoreを有効化<br />
+                  3. ウェブアプリを追加してConfig情報を取得<br />
+                  4. 上記フィールドに入力して接続
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Export Section */}
         <section className="bg-white rounded-lg shadow-sm border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200">
@@ -408,10 +656,10 @@ export default function SettingsPage() {
             <h2 className="text-lg font-medium text-gray-900">アプリ情報</h2>
           </div>
           <div className="p-6 text-sm text-gray-600 space-y-2">
-            <p>QuickNote Solo v1.0.0</p>
-            <p>個人用1行メモPWA</p>
+            <p>QuickNote Solo v3.0.0</p>
+            <p>個人用メモPWA</p>
             <p className="text-xs text-gray-500">
-              データはブラウザのIndexedDBに保存されます
+              データはローカル（IndexedDB）またはクラウド（Firebase）に保存されます
             </p>
           </div>
         </section>

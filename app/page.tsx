@@ -11,8 +11,11 @@ import {
   deleteNote, 
   searchNotes, 
   getAllTags 
-} from "@/lib/db/indexedDb";
+} from "@/lib/db/database";
 import { getCurrentPosition } from "@/lib/geo/getCurrentPosition";
+import { getFirebaseSettings } from "@/lib/settings/firebaseSettings";
+import { initializeFirebase } from "@/lib/firebase/config";
+import { initializeAuth } from "@/lib/firebase/auth";
 
 import SearchBar from "@/components/SearchBar";
 import TagChips from "@/components/TagChips";
@@ -50,13 +53,17 @@ export default function HomePage() {
 
   const loadNotes = useCallback(async () => {
     try {
+      console.log('loadNotes: Starting to load notes...');
       const filter: NoteFilter = {
         searchText: searchText || undefined,
         tags: selectedTags.length > 0 ? selectedTags : undefined,
         period,
       };
+      console.log('loadNotes: Filter:', filter);
       const result = await searchNotes(filter);
+      console.log('loadNotes: Search result:', result);
       setNotes(result);
+      console.log('loadNotes: Notes state updated with', result.length, 'notes');
     } catch (error) {
       console.error("Failed to load notes:", error);
       showToast("メモの読み込みに失敗しました", "error");
@@ -70,6 +77,33 @@ export default function HomePage() {
     } catch (error) {
       console.error("Failed to load tags:", error);
     }
+  }, []);
+
+  // Initialize Firebase if configured (API enabled version)
+  useEffect(() => {
+    const initializeFirebaseIfNeeded = async () => {
+      const firebaseSettings = getFirebaseSettings();
+      
+      if (firebaseSettings.enabled && firebaseSettings.config) {
+        console.log('Initializing Firebase with API enabled...');
+        const success = initializeFirebase(firebaseSettings.config);
+        
+        if (success) {
+          // Firebase認証を初期化
+          await initializeAuth();
+          console.log('Firebase initialized successfully - API enabled version');
+          showToast('Firebaseクラウドモードで動作しています', 'success');
+        } else {
+          console.error('Failed to initialize Firebase on app start');
+          showToast('Firebase接続に失敗しました。ローカルモードで動作します。', 'error');
+        }
+      } else {
+        console.log('Firebase not configured - using IndexedDB local storage only');
+        showToast('ローカルストレージモードで動作しています', 'info');
+      }
+    };
+
+    initializeFirebaseIfNeeded();
   }, []);
 
   // Load notes and tags
@@ -98,20 +132,43 @@ export default function HomePage() {
         }
       }
 
-      await createNote({
+      console.log('handleSubmitNote: About to call createNote...');
+      const newNote = await createNote({
         text,
         tags: [],
         location,
         pinned: false,
       });
+      console.log('handleSubmitNote: createNote returned successfully:', newNote);
 
       showToast("メモを保存しました", "success");
-      loadNotes();
-      loadTags();
+      console.log('handleSubmitNote: About to reload notes and tags...');
+      
+      // loadNotesを個別のtry-catchで実行
+      try {
+        console.log('handleSubmitNote: Calling loadNotes...');
+        await loadNotes();
+        console.log('handleSubmitNote: loadNotes completed successfully');
+      } catch (loadNotesError) {
+        console.error('handleSubmitNote: loadNotes failed:', loadNotesError);
+      }
+      
+      // loadTagsを個別のtry-catchで実行
+      try {
+        console.log('handleSubmitNote: Calling loadTags...');
+        await loadTags();
+        console.log('handleSubmitNote: loadTags completed successfully');
+      } catch (loadTagsError) {
+        console.error('handleSubmitNote: loadTags failed:', loadTagsError);
+      }
+      
+      console.log('handleSubmitNote: All operations completed');
     } catch (error) {
       console.error("Failed to create note:", error);
+      console.error("Full error details:", error);
       showToast("メモの保存に失敗しました", "error");
     } finally {
+      console.log('handleSubmitNote: Setting isSubmitting to false');
       setIsSubmitting(false);
     }
   };
@@ -243,7 +300,7 @@ export default function HomePage() {
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 px-4 py-6 overflow-y-auto pb-4">
+      <main className="flex-1 px-4 py-6 overflow-y-auto pb-32">
         <NoteList
           notes={notes}
           onPin={handlePinNote}

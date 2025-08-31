@@ -37,6 +37,7 @@ export async function getDB(): Promise<IDBPDatabase<NotesDB>> {
 }
 
 export async function createNote(noteData: Omit<Note, "id" | "createdAt" | "updatedAt">): Promise<Note> {
+  console.log('IndexedDB createNote: Starting note creation...');
   const db = await getDB();
   const note: Note = {
     ...noteData,
@@ -45,15 +46,17 @@ export async function createNote(noteData: Omit<Note, "id" | "createdAt" | "upda
     updatedAt: Date.now(),
   };
 
+  console.log('IndexedDB createNote: Created note object:', note);
   await db.add(STORE_NAME, note);
+  console.log('IndexedDB createNote: Successfully saved to IndexedDB with ID:', note.id);
   return note;
 }
 
-export async function updateNote(id: string, updates: Partial<Omit<Note, "id" | "createdAt">>): Promise<Note | null> {
+export async function updateNote(id: string, updates: Partial<Omit<Note, "id" | "createdAt" | "updatedAt">>): Promise<void> {
   const db = await getDB();
   const note = await db.get(STORE_NAME, id);
   
-  if (!note) return null;
+  if (!note) return;
 
   const updatedNote: Note = {
     ...note,
@@ -62,17 +65,11 @@ export async function updateNote(id: string, updates: Partial<Omit<Note, "id" | 
   };
 
   await db.put(STORE_NAME, updatedNote);
-  return updatedNote;
 }
 
-export async function deleteNote(id: string): Promise<boolean> {
+export async function deleteNote(id: string): Promise<void> {
   const db = await getDB();
-  const note = await db.get(STORE_NAME, id);
-  
-  if (!note) return false;
-
   await db.delete(STORE_NAME, id);
-  return true;
 }
 
 export async function getNote(id: string): Promise<Note | null> {
@@ -81,15 +78,24 @@ export async function getNote(id: string): Promise<Note | null> {
   return note || null;
 }
 
+// Alias for compatibility with Firestore
+export const getNoteById = getNote;
+
 export async function getAllNotes(): Promise<Note[]> {
+  console.log('IndexedDB getAllNotes: Fetching all notes from IndexedDB...');
   const db = await getDB();
   const notes = await db.getAll(STORE_NAME);
-  return notes.sort((a, b) => {
+  console.log('IndexedDB getAllNotes: Retrieved', notes.length, 'notes from IndexedDB');
+  
+  const sortedNotes = notes.sort((a, b) => {
     if (a.pinned !== b.pinned) {
       return a.pinned ? -1 : 1;
     }
     return b.createdAt - a.createdAt;
   });
+  
+  console.log('IndexedDB getAllNotes: Returning sorted notes:', sortedNotes);
+  return sortedNotes;
 }
 
 export async function searchNotes(filter: NoteFilter): Promise<Note[]> {
