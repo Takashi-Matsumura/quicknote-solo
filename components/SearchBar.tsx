@@ -8,24 +8,28 @@ interface SearchBarProps {
   onChange: (value: string) => void;
   onClear: () => void;
   placeholder?: string;
+  onSearchExpand?: (expanded: boolean) => void;
 }
 
-export default function SearchBar({ value, onChange, onClear, placeholder = "メモを検索..." }: SearchBarProps) {
+export default function SearchBar({ value, onChange, onClear, placeholder = "メモを検索...", onSearchExpand }: SearchBarProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   
   const handleSearchClick = () => {
     setIsExpanded(true);
+    onSearchExpand?.(true);
   };
   
   const handleBlur = () => {
     if (!value) {
       setIsExpanded(false);
+      onSearchExpand?.(false);
     }
   };
   
   const handleClear = () => {
     onClear();
     setIsExpanded(false);
+    onSearchExpand?.(false);
   };
   
   // アイコンのみ表示状態

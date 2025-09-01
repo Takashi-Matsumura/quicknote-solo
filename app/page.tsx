@@ -50,6 +50,7 @@ export default function HomePage() {
     message: "",
     onConfirm: () => {},
   });
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
 
   const loadNotes = useCallback(async () => {
     try {
@@ -265,7 +266,7 @@ export default function HomePage() {
       <div className="bg-white border-b border-gray-200 p-4 space-y-4 flex-shrink-0">
         {/* Period Filter with Search */}
         <div className="flex items-center space-x-2">
-          {(["today", "7d", "30d", "all"] as const).map((p) => (
+          {!isSearchExpanded && (["today", "7d", "30d", "all"] as const).map((p) => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
@@ -284,11 +285,14 @@ export default function HomePage() {
             </button>
           ))}
           
-          <SearchBar
-            value={searchText}
-            onChange={setSearchText}
-            onClear={clearSearch}
-          />
+          <div className={isSearchExpanded ? "flex-1" : ""}>
+            <SearchBar
+              value={searchText}
+              onChange={setSearchText}
+              onClear={clearSearch}
+              onSearchExpand={setIsSearchExpanded}
+            />
+          </div>
         </div>
 
         <TagChips

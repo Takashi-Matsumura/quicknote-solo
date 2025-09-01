@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { FiSend, FiMapPin, FiMic, FiMicOff } from "react-icons/fi";
+import { FiSend, FiMapPin, FiMic, FiMicOff, FiEdit3 } from "react-icons/fi";
 import { getLocationSetting } from "@/lib/settings/locationSettings";
 import { getSpeechEnabled, getSpeechAutoSubmit } from "@/lib/settings/speechSettings";
 import { getSpeechRecognitionService, SpeechRecognitionResult } from "@/lib/speech/speechRecognition";
+import { useIsMobile } from "@/lib/hooks/useDevice";
 
 interface NoteInputBarProps {
   onSubmit: (text: string, includeLocation: boolean) => void;
@@ -24,6 +25,27 @@ export default function NoteInputBar({
   const [interimText, setInterimText] = useState("");
   const [speechService] = useState(() => getSpeechRecognitionService());
   const [isClient, setIsClient] = useState(false);
+  const [showTextInput, setShowTextInput] = useState(false);
+  const [isVoiceMode, setIsVoiceMode] = useState(false); // PCモードで音声入力に切り替えたか
+  const [windowWidth, setWindowWidth] = useState(0);
+  const isMobile = useIsMobile();
+  
+  // クライアントサイドでのみ画面幅を取得
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setWindowWidth(window.innerWidth);
+      
+      const handleResize = () => {
+        setWindowWidth(window.innerWidth);
+      };
+      
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
+  }, []);
+  
+  // モバイルデバイスまたは小さい画面幅の場合にモバイルUIを表示
+  const shouldShowMobileUI = isMobile || windowWidth < 768;
 
   useEffect(() => {
     setIsClient(true);
@@ -76,20 +98,28 @@ export default function NoteInputBar({
       setText(finalText);
       setInterimText("");
       
-      // 自動送信が有効な場合は自動で送信
-      if (getSpeechAutoSubmit() && finalText) {
+      // スマホの場合は自動登録
+      if (shouldShowMobileUI && finalText) {
         setTimeout(() => {
           if (!isSubmitting) {
             const includeLocation = getLocationSetting();
             onSubmit(finalText, includeLocation);
             setText("");
+            setIsListening(false);
           }
-        }, 500); // 500ms後に自動送信
+        }, 500);
+      }
+      // PCモードの場合はテキストモードに戻る
+      else if (!shouldShowMobileUI && isVoiceMode) {
+        setTimeout(() => {
+          setIsVoiceMode(false);
+          setIsListening(false);
+        }, 1000);
       }
     } else {
       setInterimText(result.transcript);
     }
-  }, [text, isSubmitting, onSubmit]);
+  }, [text, isSubmitting, onSubmit, shouldShowMobileUI, isVoiceMode]);
 
   const handleMicClick = useCallback(async () => {
     if (!speechService.isSupported()) {
@@ -119,8 +149,189 @@ export default function NoteInputBar({
 
   const displayText = text + interimText;
 
+  // モバイル用の音声専用UI
+  if (shouldShowMobileUI) {
+    return (
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-6 pb-12 safe-area-bottom z-50">
+        
+        {/* 音声認識結果表示エリア */}
+        {(text || interimText) && (
+          <div className="mb-6 p-4 bg-gray-50 rounded-lg min-h-[80px] max-h-[120px] overflow-y-auto">
+            <div className="text-gray-800">
+              {text}
+              {interimText && (
+                <span className="text-gray-400 italic">{interimText}</span>
+              )}
+            </div>
+          </div>
+        )}
+        
+        {/* 音声入力中の視覚的フィードバック */}
+        {isListening && (
+          <div className="mb-6 text-center">
+            <div className="inline-flex items-center space-x-2 text-red-500">
+              <div className="w-2 h-2 bg-red-500 rounded-full animate-ping"></div>
+              <span className="text-sm font-medium">音声を認識中...</span>
+              <div className="w-2 h-2 bg-red-500 rounded-full animate-ping" style={{animationDelay: '0.5s'}}></div>
+            </div>
+          </div>
+        )}
+        
+        
+        {/* メイン音声入力ボタンエリア */}
+        <div className="flex flex-col items-center space-y-4">
+          {/* 大きな円形マイクボタン */}
+          {isClient && speechEnabled && speechService.isSupported() ? (
+            <button
+              type="button"
+              onClick={handleMicClick}
+              disabled={isSubmitting}
+              className={`relative flex items-center justify-center rounded-full transition-all duration-300 transform ${
+                isListening
+                  ? "bg-red-500 text-white scale-110 shadow-lg animate-pulse"
+                  : "bg-blue-500 text-white hover:bg-blue-600 hover:scale-105 shadow-md"
+              } disabled:bg-gray-300 disabled:cursor-not-allowed`}
+              style={{ height: "100px", width: "100px" }}
+            >
+              {isListening ? (
+                <>
+                  <div className="absolute inset-0 rounded-full border-4 border-red-300 animate-pulse"></div>
+                  <FiMicOff className="h-10 w-10" />
+                </>
+              ) : (
+                <FiMic className="h-10 w-10" />
+              )}
+            </button>
+          ) : (
+            // フォールバック：条件が満たされない場合の表示
+            <div className="flex flex-col items-center space-y-3">
+              <div className="bg-gray-200 rounded-full flex items-center justify-center" style={{ height: "100px", width: "100px" }}>
+                <FiMic className="h-10 w-10 text-gray-400" />
+              </div>
+              <p className="text-sm text-red-500 text-center max-w-xs">
+                {!isClient && "読み込み中..."}
+                {isClient && !speechEnabled && "音声入力が無効です"}
+                {isClient && speechEnabled && !speechService.isSupported() && "音声認識がサポートされていません"}
+              </p>
+            </div>
+          )}
+          
+          
+          {/* ステータステキスト */}
+          <div className="text-center space-y-2">
+            <p className="text-lg font-medium text-gray-800">
+              {isListening ? "録音中..." : "音声でメモを追加"}
+            </p>
+            <p className="text-sm text-gray-600">
+              {isListening 
+                ? "再度タップして録音停止・自動保存" 
+                : "マイクボタンをタップして録音開始"
+              }
+            </p>
+          </div>
+          
+          {/* 位置情報表示 */}
+          <div className="flex items-center space-x-2 px-4 py-2 bg-gray-50 rounded-full">
+            <FiMapPin
+              className={`h-4 w-4 transition-colors ${
+                locationEnabled ? "text-blue-500" : "text-gray-400"
+              }`}
+            />
+            <span className="text-sm text-gray-600">
+              {locationEnabled ? "位置情報を含めて保存" : "位置情報なしで保存"}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // PCモード：音声入力モードの場合は大きなマイクUIを表示
+  if (!shouldShowMobileUI && isVoiceMode) {
+    return (
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-8 pb-12 safe-area-bottom z-50">
+        {/* 音声認識結果表示エリア */}
+        {(text || interimText) && (
+          <div className="mb-6 p-4 bg-gray-50 rounded-lg min-h-[60px] max-h-[100px] overflow-y-auto mx-auto max-w-2xl">
+            <div className="text-gray-800">
+              {text}
+              {interimText && (
+                <span className="text-gray-400 italic">{interimText}</span>
+              )}
+            </div>
+          </div>
+        )}
+        
+        {/* 音声入力中の視覚的フィードバック */}
+        {isListening && (
+          <div className="mb-6 text-center">
+            <div className="inline-flex items-center space-x-2 text-red-500">
+              <div className="w-2 h-2 bg-red-500 rounded-full animate-ping"></div>
+              <span className="text-sm font-medium">音声を認識中...</span>
+              <div className="w-2 h-2 bg-red-500 rounded-full animate-ping" style={{animationDelay: '0.5s'}}></div>
+            </div>
+          </div>
+        )}
+        
+        {/* メイン音声入力ボタンエリア */}
+        <div className="flex flex-col items-center space-y-4">
+          {/* 大きな円形マイクボタン */}
+          {isClient && speechEnabled && speechService.isSupported() ? (
+            <button
+              type="button"
+              onClick={handleMicClick}
+              disabled={isSubmitting}
+              className={`relative flex items-center justify-center rounded-full transition-all duration-300 transform ${
+                isListening
+                  ? "bg-red-500 text-white scale-110 shadow-xl"
+                  : "bg-blue-500 text-white hover:bg-blue-600 hover:scale-105 shadow-lg"
+              } disabled:bg-gray-300 disabled:cursor-not-allowed`}
+              style={{ height: "80px", width: "80px" }}
+            >
+              {isListening ? (
+                <>
+                  <div className="absolute inset-0 rounded-full border-4 border-red-300 animate-pulse"></div>
+                  <FiMicOff className="h-8 w-8" />
+                </>
+              ) : (
+                <FiMic className="h-8 w-8" />
+              )}
+            </button>
+          ) : (
+            <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center">
+              <FiMic className="h-8 w-8 text-gray-400" />
+            </div>
+          )}
+          
+          <div className="text-center space-y-2">
+            <p className="text-lg font-medium text-gray-800">
+              {isListening ? "録音中..." : "音声入力モード"}
+            </p>
+            <p className="text-sm text-gray-600">
+              {isListening 
+                ? "マイクボタンをクリックして録音停止" 
+                : "マイクボタンをクリックして録音開始"
+              }
+            </p>
+          </div>
+          
+          {/* 戻るボタン */}
+          <button
+            type="button"
+            onClick={() => setIsVoiceMode(false)}
+            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            テキスト入力に戻る
+          </button>
+        </div>
+      </div>
+    );
+  }
+  
+  // PCモード：通常のテキスト入力UI
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 pb-12 safe-area-bottom z-50">
+      
       <form onSubmit={handleSubmit} className="flex items-start space-x-3">
         <div className="flex items-center px-6 pb-3 space-x-3 w-full">
           <div
@@ -169,28 +380,7 @@ export default function NoteInputBar({
             )}
           </div>
           
-          {/* 音声入力ボタン */}
-          {isClient && speechEnabled && speechService.isSupported() && (
-            <button
-              type="button"
-              onClick={handleMicClick}
-              disabled={isSubmitting}
-              className={`flex-shrink-0 flex mb-1 items-center justify-center rounded-lg transition-colors mt-0 ${
-                isListening
-                  ? "bg-red-500 text-white animate-pulse hover:bg-red-600"
-                  : "bg-gray-500 text-white hover:bg-gray-600"
-              } disabled:bg-gray-300 disabled:cursor-not-allowed`}
-              title={isListening ? "録音中 (クリックで停止)" : "音声入力"}
-              style={{ height: "40px", width: "40px" }}
-            >
-              {isListening ? (
-                <FiMicOff className="h-4 w-4" />
-              ) : (
-                <FiMic className="h-4 w-4" />
-              )}
-            </button>
-          )}
-          
+          {/* 送信ボタン */}
           <button
             type="submit"
             disabled={!text.trim() || isSubmitting}
@@ -200,6 +390,20 @@ export default function NoteInputBar({
           >
             <FiSend className="h-4 w-4" />
           </button>
+          
+          {/* 音声入力ボタン（PCモード用） */}
+          {isClient && speechEnabled && speechService.isSupported() && (
+            <button
+              type="button"
+              onClick={() => setIsVoiceMode(true)}
+              disabled={isSubmitting}
+              className="flex-shrink-0 flex mb-1 items-center justify-center rounded-lg transition-colors mt-0 bg-gray-500 text-white hover:bg-gray-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+              title="音声入力モードに切り替え"
+              style={{ height: "40px", width: "40px" }}
+            >
+              <FiMic className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </form>
     </div>
