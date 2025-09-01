@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { FiSend, FiMapPin, FiMic, FiMicOff, FiEdit3 } from "react-icons/fi";
+import { FiSend, FiMapPin, FiMic, FiMicOff } from "react-icons/fi";
 import { getLocationSetting } from "@/lib/settings/locationSettings";
-import { getSpeechEnabled, getSpeechAutoSubmit } from "@/lib/settings/speechSettings";
+import { getSpeechEnabled } from "@/lib/settings/speechSettings";
 import { getSpeechRecognitionService, SpeechRecognitionResult } from "@/lib/speech/speechRecognition";
 import { useIsMobile } from "@/lib/hooks/useDevice";
 
@@ -25,7 +25,6 @@ export default function NoteInputBar({
   const [interimText, setInterimText] = useState("");
   const [speechService] = useState(() => getSpeechRecognitionService());
   const [isClient, setIsClient] = useState(false);
-  const [showTextInput, setShowTextInput] = useState(false);
   const [isVoiceMode, setIsVoiceMode] = useState(false); // PCモードで音声入力に切り替えたか
   const [windowWidth, setWindowWidth] = useState(0);
   const isMobile = useIsMobile();
