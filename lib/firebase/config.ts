@@ -1,6 +1,7 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app';
 import { getFirestore, type Firestore, initializeFirestore } from 'firebase/firestore';
 import { getAuth, type Auth } from 'firebase/auth';
+import { getStorage, type FirebaseStorage } from 'firebase/storage';
 
 export interface FirebaseConfig {
   apiKey: string;
@@ -14,6 +15,7 @@ export interface FirebaseConfig {
 let app: FirebaseApp | null = null;
 let db: Firestore | null = null;
 let auth: Auth | null = null;
+let storage: FirebaseStorage | null = null;
 
 export function initializeFirebase(config: FirebaseConfig) {
   try {
@@ -41,6 +43,17 @@ export function initializeFirebase(config: FirebaseConfig) {
     
     auth = getAuth(app);
     
+    // Firebase Storage初期化
+    try {
+      storage = getStorage(app);
+      console.log('Firebase Storage initialized successfully');
+    } catch (storageError) {
+      console.warn('Firebase Storage initialization failed:', storageError);
+      console.warn('Firebase Storage may not be enabled for this project');
+      // Storage失敗でも他のサービスは使用可能
+      storage = null;
+    }
+    
     console.log('Firebase initialized successfully - WebChannel Listen/Write disabled');
     return true;
   } catch (error) {
@@ -61,12 +74,21 @@ export function getFirebaseAuth(): Auth | null {
   return auth;
 }
 
+export function getFirebaseStorage(): FirebaseStorage | null {
+  return storage;
+}
+
 export function isFirebaseInitialized(): boolean {
   return app !== null && db !== null && auth !== null;
+}
+
+export function isFirebaseStorageAvailable(): boolean {
+  return storage !== null;
 }
 
 export function resetFirebase() {
   app = null;
   db = null;
   auth = null;
+  storage = null;
 }

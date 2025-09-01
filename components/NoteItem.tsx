@@ -4,6 +4,7 @@ import { useState } from "react";
 import { FiBookmark, FiMapPin, FiTrash, FiTag } from "react-icons/fi";
 import type { Note } from "@/lib/models/note";
 import { createMapUrl } from "@/lib/geo/getCurrentPosition";
+import FileDisplay from "./FileDisplay";
 
 interface NoteItemProps {
   note: Note;
@@ -155,6 +156,17 @@ export default function NoteItem({ note, onPin, onDelete, onEditTags }: NoteItem
                 {tag}
               </span>
             ))}
+          </div>
+        )}
+
+        {/* File attachments */}
+        {note.attachments && note.attachments.length > 0 && (
+          <div className="mt-3">
+            <FileDisplay 
+              attachments={note.attachments} 
+              compact={true}
+              maxDisplay={3}
+            />
           </div>
         )}
 

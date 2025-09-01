@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { FiSettings, FiInfo } from "react-icons/fi";
 import Link from "next/link";
 
-import type { Note, NoteFilter } from "@/lib/models/note";
+import type { Note, NoteFilter, FileAttachment } from "@/lib/models/note";
 import { 
   createNote, 
   updateNote, 
@@ -117,7 +117,11 @@ export default function HomePage() {
     setToast({ message, type });
   };
 
-  const handleSubmitNote = async (text: string, includeLocation: boolean) => {
+  const handleFileDropped = async (file: FileAttachment, text: string) => {
+    await handleSubmitNote(text, true, [file]);
+  };
+
+  const handleSubmitNote = async (text: string, includeLocation: boolean, attachments?: FileAttachment[]) => {
     setIsSubmitting(true);
     
     try {
@@ -139,6 +143,7 @@ export default function HomePage() {
         tags: [],
         location,
         pinned: false,
+        attachments: attachments && attachments.length > 0 ? attachments : undefined,
       });
       console.log('handleSubmitNote: createNote returned successfully:', newNote);
 
@@ -192,10 +197,15 @@ export default function HomePage() {
     const note = notes.find(n => n.id === id);
     if (!note) return;
 
+    // テキストが空の場合（ファイルのみのメモ）は汎用的なメッセージを表示
+    const displayText = note.text.trim() === "" 
+      ? "このメモ"
+      : `「${note.text.slice(0, 30)}${note.text.length > 30 ? "..." : ""}」`;
+
     setConfirmDialog({
       isOpen: true,
       title: "メモを削除",
-      message: `「${note.text.slice(0, 30)}${note.text.length > 30 ? "..." : ""}」を削除しますか？`,
+      message: `${displayText}を削除しますか？`,
       onConfirm: async () => {
         try {
           await deleteNote(id);
@@ -316,6 +326,7 @@ export default function HomePage() {
       {/* Input Bar */}
       <NoteInputBar
         onSubmit={handleSubmitNote}
+        onFileDropped={handleFileDropped}
         isSubmitting={isSubmitting}
       />
 
