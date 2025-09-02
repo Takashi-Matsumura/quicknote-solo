@@ -114,7 +114,7 @@ export default function NoteItem({ note, onPin, onDelete, onEditTags }: NoteItem
                     href={createMapUrl(note.location)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center text-blue-600 hover:text-blue-800 flex-shrink-0"
+                    className="flex items-center text-blue-800 hover:text-blue-900 flex-shrink-0"
                   >
                     <FiMapPin className="h-3 w-3 mr-1" />
                     位置
@@ -178,7 +178,7 @@ export default function NoteItem({ note, onPin, onDelete, onEditTags }: NoteItem
               value={tagInput}
               onChange={(e) => setTagInput(e.target.value)}
               placeholder="タグをカンマ区切りで入力..."
-              className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-800"
               autoFocus
             />
             <div className="flex justify-end space-x-2 mt-2">
@@ -190,7 +190,7 @@ export default function NoteItem({ note, onPin, onDelete, onEditTags }: NoteItem
               </button>
               <button
                 onClick={handleSaveTags}
-                className="px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
+                className="px-2 py-1 bg-blue-800 text-white text-xs rounded hover:bg-blue-900"
               >
                 保存
               </button>

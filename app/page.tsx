@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { FiSettings, FiInfo } from "react-icons/fi";
+import { FiSettings, FiInfo, FiEdit } from "react-icons/fi";
 import Link from "next/link";
 
 import type { Note, NoteFilter, FileAttachment } from "@/lib/models/note";
@@ -254,7 +254,12 @@ export default function HomePage() {
       {/* Header */}
       <header className="bg-white border-b border-gray-200 px-4 py-3 flex-shrink-0">
         <div className="flex items-center justify-between">
-          <h1 className="text-lg font-semibold text-gray-900">QuickNote Solo</h1>
+          <div className="flex items-center">
+            <div className="flex items-center justify-center w-8 h-8 bg-blue-800 rounded-lg mr-2">
+              <FiEdit className="h-5 w-5 text-white" />
+            </div>
+            <h1 className="text-lg font-semibold text-gray-900">QuickNote Solo</h1>
+          </div>
           <div className="flex items-center space-x-2">
             <Link 
               href="/about"
@@ -282,7 +287,7 @@ export default function HomePage() {
               onClick={() => setPeriod(p)}
               className={`px-3 py-1 text-xs rounded-full border transition-colors ${
                 period === p
-                  ? "bg-blue-500 text-white border-blue-500"
+                  ? "bg-blue-800 text-white border-blue-800"
                   : "bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200"
               }`}
             >

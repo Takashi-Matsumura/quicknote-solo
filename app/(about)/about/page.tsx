@@ -25,7 +25,7 @@ export default function AboutPage() {
           <div className="p-6">
             <div className="text-center mb-6">
               <div className="flex justify-center mb-4">
-                <FiEdit className="text-blue-500 text-6xl" />
+                <FiEdit className="text-blue-800 text-6xl" />
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">QuickNote Solo</h2>
               <p className="text-gray-600">個人用メモアプリ</p>
@@ -46,7 +46,7 @@ export default function AboutPage() {
             <div className="space-y-4">
               <div className="flex items-start space-x-3">
                 <div className="flex-shrink-0 p-2 bg-blue-100 rounded-lg">
-                  <FiMapPin className="h-5 w-5 text-blue-600" />
+                  <FiMapPin className="h-5 w-5 text-blue-800" />
                 </div>
                 <div>
                   <h4 className="font-medium text-gray-900">位置情報付きメモ</h4>
@@ -57,8 +57,8 @@ export default function AboutPage() {
               </div>
 
               <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0 p-2 bg-yellow-100 rounded-lg">
-                  <FiBookmark className="h-5 w-5 text-yellow-600" />
+                <div className="flex-shrink-0 p-2 bg-blue-100 rounded-lg">
+                  <FiBookmark className="h-5 w-5 text-blue-800" />
                 </div>
                 <div>
                   <h4 className="font-medium text-gray-900">ピン留め機能</h4>
@@ -69,8 +69,8 @@ export default function AboutPage() {
               </div>
 
               <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0 p-2 bg-green-100 rounded-lg">
-                  <FiTag className="h-5 w-5 text-green-600" />
+                <div className="flex-shrink-0 p-2 bg-blue-100 rounded-lg">
+                  <FiTag className="h-5 w-5 text-blue-800" />
                 </div>
                 <div>
                   <h4 className="font-medium text-gray-900">タグ機能</h4>
@@ -81,8 +81,8 @@ export default function AboutPage() {
               </div>
 
               <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0 p-2 bg-purple-100 rounded-lg">
-                  <FiSearch className="h-5 w-5 text-purple-600" />
+                <div className="flex-shrink-0 p-2 bg-blue-100 rounded-lg">
+                  <FiSearch className="h-5 w-5 text-blue-800" />
                 </div>
                 <div>
                   <h4 className="font-medium text-gray-900">検索・フィルタ</h4>
@@ -93,20 +93,20 @@ export default function AboutPage() {
               </div>
 
               <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0 p-2 bg-orange-100 rounded-lg">
-                  <FiDownload className="h-5 w-5 text-orange-600" />
+                <div className="flex-shrink-0 p-2 bg-blue-100 rounded-lg">
+                  <FiDownload className="h-5 w-5 text-blue-800" />
                 </div>
                 <div>
-                  <h4 className="font-medium text-gray-900">エクスポート・インポート</h4>
+                  <h4 className="font-medium text-gray-900">エクスポート</h4>
                   <p className="text-sm text-gray-600 mt-1">
-                    JSON/CSV/Markdown形式でデータをエクスポート・インポートできます
+                    CSV形式でメモデータをエクスポートできます
                   </p>
                 </div>
               </div>
 
               <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0 p-2 bg-red-100 rounded-lg">
-                  <FiImage className="h-5 w-5 text-red-600" />
+                <div className="flex-shrink-0 p-2 bg-blue-100 rounded-lg">
+                  <FiImage className="h-5 w-5 text-blue-800" />
                 </div>
                 <div>
                   <h4 className="font-medium text-gray-900">画像アップロード</h4>
@@ -117,8 +117,8 @@ export default function AboutPage() {
               </div>
 
               <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0 p-2 bg-pink-100 rounded-lg">
-                  <FiMic className="h-5 w-5 text-pink-600" />
+                <div className="flex-shrink-0 p-2 bg-blue-100 rounded-lg">
+                  <FiMic className="h-5 w-5 text-blue-800" />
                 </div>
                 <div>
                   <h4 className="font-medium text-gray-900">音声入力</h4>
@@ -129,8 +129,8 @@ export default function AboutPage() {
               </div>
 
               <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0 p-2 bg-sky-100 rounded-lg">
-                  <FiCloud className="h-5 w-5 text-sky-600" />
+                <div className="flex-shrink-0 p-2 bg-blue-100 rounded-lg">
+                  <FiCloud className="h-5 w-5 text-blue-800" />
                 </div>
                 <div>
                   <h4 className="font-medium text-gray-900">クラウド同期</h4>
@@ -141,8 +141,8 @@ export default function AboutPage() {
               </div>
 
               <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0 p-2 bg-indigo-100 rounded-lg">
-                  <FiShare className="h-5 w-5 text-indigo-600" />
+                <div className="flex-shrink-0 p-2 bg-blue-100 rounded-lg">
+                  <FiShare className="h-5 w-5 text-blue-800" />
                 </div>
                 <div>
                   <h4 className="font-medium text-gray-900">オフライン対応</h4>
@@ -163,27 +163,27 @@ export default function AboutPage() {
           <div className="p-6">
             <div className="space-y-3 text-sm text-gray-600">
               <div className="flex items-start">
-                <span className="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">1</span>
+                <span className="flex-shrink-0 w-6 h-6 bg-blue-800 text-white rounded-full flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">1</span>
                 <p>メモはできるだけ短く、キーワードを含めて書くと検索しやすくなります</p>
               </div>
               <div className="flex items-start">
-                <span className="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">2</span>
+                <span className="flex-shrink-0 w-6 h-6 bg-blue-800 text-white rounded-full flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">2</span>
                 <p>タグは「仕事」「買い物」「アイデア」など用途別に分けると便利です</p>
               </div>
               <div className="flex items-start">
-                <span className="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">3</span>
+                <span className="flex-shrink-0 w-6 h-6 bg-blue-800 text-white rounded-full flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">3</span>
                 <p>画像はドラッグ&ドロップまたはスマホでスワイプしてファイルモードに切り替え</p>
               </div>
               <div className="flex items-start">
-                <span className="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">4</span>
+                <span className="flex-shrink-0 w-6 h-6 bg-blue-800 text-white rounded-full flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">4</span>
                 <p>位置情報は外出先でのメモに付けると後で思い出しやすくなります</p>
               </div>
               <div className="flex items-start">
-                <span className="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">5</span>
+                <span className="flex-shrink-0 w-6 h-6 bg-blue-800 text-white rounded-full flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">5</span>
                 <p>Firebase設定でクラウド同期を有効にするとデバイス間でメモが共有されます</p>
               </div>
               <div className="flex items-start">
-                <span className="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">6</span>
+                <span className="flex-shrink-0 w-6 h-6 bg-blue-800 text-white rounded-full flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">6</span>
                 <p>定期的にエクスポート機能でバックアップを取ることをおすすめします</p>
               </div>
             </div>

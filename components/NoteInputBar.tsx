@@ -389,7 +389,7 @@ export default function NoteInputBar({
                     ? "bg-green-500 text-white hover:bg-green-600 hover:scale-105 shadow-md"
                     : isListening
                     ? "bg-red-500 text-white scale-110 shadow-lg animate-pulse"
-                    : "bg-blue-500 text-white hover:bg-blue-600 hover:scale-105 shadow-md"
+                    : "bg-blue-800 text-white hover:bg-blue-900 hover:scale-105 shadow-md"
                 } disabled:bg-gray-300 disabled:cursor-not-allowed`}
                 style={{ height: "100px", width: "100px" }}
               >
@@ -442,7 +442,7 @@ export default function NoteInputBar({
           <div className="flex items-center space-x-2 px-4 py-2 bg-gray-50 rounded-full">
             <FiMapPin
               className={`h-4 w-4 transition-colors ${
-                locationEnabled ? "text-blue-500" : "text-gray-400"
+                locationEnabled ? "text-blue-800" : "text-gray-400"
               }`}
             />
             <span className="text-sm text-gray-600">
@@ -500,7 +500,7 @@ export default function NoteInputBar({
                     ? "bg-green-500 text-white scale-110 shadow-xl ring-4 ring-green-300"
                     : isListening
                     ? "bg-red-500 text-white scale-110 shadow-xl"
-                    : "bg-blue-500 text-white hover:bg-blue-600 hover:scale-105 shadow-lg"
+                    : "bg-blue-800 text-white hover:bg-blue-900 hover:scale-105 shadow-lg"
                 } disabled:bg-gray-300 disabled:cursor-not-allowed`}
                 style={{ height: "80px", width: "80px" }}
               >
@@ -561,7 +561,7 @@ export default function NoteInputBar({
           >
             <FiMapPin
               className={`h-7 w-7 transition-colors ${
-                locationEnabled ? "text-blue-500" : "text-gray-400"
+                locationEnabled ? "text-blue-800" : "text-gray-400"
               }`}
             />
           </div>
@@ -588,7 +588,7 @@ export default function NoteInputBar({
                     ? "音声を認識中..." 
                     : placeholder
                 }
-                className={`w-full px-4 py-2 border rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all ${
+                className={`w-full px-4 py-2 border rounded-lg resize-none focus:ring-2 focus:ring-blue-700 focus:border-transparent outline-none transition-all ${
                   isDragOver
                     ? "bg-green-50 border-green-400 ring-2 ring-green-300"
                     : isListening 
@@ -620,7 +620,7 @@ export default function NoteInputBar({
           <button
             type="submit"
             disabled={!text.trim() || isSubmitting}
-            className="flex-shrink-0 flex items-center justify-center bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+            className="flex-shrink-0 flex items-center justify-center bg-blue-800 text-white rounded-lg hover:bg-blue-900 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
             title="送信"
             style={{ height: "40px", width: "40px" }}
           >

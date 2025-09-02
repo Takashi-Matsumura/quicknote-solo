@@ -1,14 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FiDownload, FiUpload, FiTrash2, FiArrowLeft, FiMapPin, FiMic } from "react-icons/fi";
+import { FiDownload, FiTrash2, FiArrowLeft, FiMapPin, FiMic } from "react-icons/fi";
 import Link from "next/link";
 
 import { getAllNotes, clearAllNotes } from "@/lib/db/database";
-import { downloadJsonFile } from "@/lib/export/json";
 import { downloadCsvFile } from "@/lib/export/csv";
-import { downloadMarkdownFile } from "@/lib/export/md";
-import { importFromJson, readFileAsText } from "@/lib/import/json";
 import { getLocationSetting, setLocationSetting } from "@/lib/settings/locationSettings";
 import { getSpeechEnabled, setSpeechEnabled, getSpeechAutoSubmit, setSpeechAutoSubmit, getSpeechLanguage, setSpeechLanguage, SUPPORTED_LANGUAGES } from "@/lib/settings/speechSettings";
 import { getFirebaseSettings, setFirebaseSettings, getStorageType, setStorageType, type StorageType } from "@/lib/settings/firebaseSettings";
@@ -25,7 +22,6 @@ interface ToastState {
 
 export default function SettingsPage() {
   const [isExporting, setIsExporting] = useState(false);
-  const [isImporting, setIsImporting] = useState(false);
   const [locationEnabled, setLocationEnabled] = useState(true);
   const [speechEnabled, setSpeechEnabledState] = useState(true);
   const [speechAutoSubmit, setSpeechAutoSubmitState] = useState(false);
@@ -290,7 +286,7 @@ export default function SettingsPage() {
     }
   };
 
-  const handleExport = async (format: "json" | "csv" | "md") => {
+  const handleExport = async () => {
     setIsExporting(true);
     
     try {
@@ -302,20 +298,9 @@ export default function SettingsPage() {
       }
 
       const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-");
+      downloadCsvFile(notes, `quicknote-solo-${timestamp}.csv`);
       
-      switch (format) {
-        case "json":
-          downloadJsonFile(notes, `quicknote-solo-${timestamp}.json`);
-          break;
-        case "csv":
-          downloadCsvFile(notes, `quicknote-solo-${timestamp}.csv`);
-          break;
-        case "md":
-          downloadMarkdownFile(notes, `quicknote-solo-${timestamp}.md`);
-          break;
-      }
-      
-      showToast(`${format.toUpperCase()}形式でエクスポートしました`, "success");
+      showToast("CSV形式でエクスポートしました", "success");
     } catch (error) {
       console.error("Export failed:", error);
       showToast("エクスポートに失敗しました", "error");
@@ -324,40 +309,6 @@ export default function SettingsPage() {
     }
   };
 
-  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (!file.name.toLowerCase().endsWith(".json")) {
-      showToast("JSONファイルを選択してください", "error");
-      return;
-    }
-
-    setIsImporting(true);
-    
-    try {
-      const content = await readFileAsText(file);
-      const result = await importFromJson(content);
-      
-      if (result.errors.length > 0) {
-        console.warn("Import errors:", result.errors);
-      }
-      
-      const message = `${result.imported}件のメモをインポート、${result.skipped}件をスキップしました`;
-      showToast(message, result.imported > 0 ? "success" : "info");
-      
-      if (result.errors.length > 0) {
-        showToast(`${result.errors.length}件のエラーがありました`, "error");
-      }
-    } catch (error) {
-      console.error("Import failed:", error);
-      showToast("インポートに失敗しました", "error");
-    } finally {
-      setIsImporting(false);
-      // Reset file input
-      event.target.value = "";
-    }
-  };
 
   const handleClearAllData = () => {
     setConfirmDialog({
@@ -786,66 +737,15 @@ const firebaseConfig = {
             <h2 className="text-lg font-medium text-gray-900">エクスポート</h2>
             <p className="mt-1 text-sm text-gray-600">メモを外部ファイルに出力します</p>
           </div>
-          <div className="p-6 space-y-4">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <button
-                onClick={() => handleExport("json")}
-                disabled={isExporting}
-                className="flex items-center justify-center px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-              >
-                <FiDownload className="h-4 w-4 mr-2" />
-                JSON
-              </button>
-              <button
-                onClick={() => handleExport("csv")}
-                disabled={isExporting}
-                className="flex items-center justify-center px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-              >
-                <FiDownload className="h-4 w-4 mr-2" />
-                CSV
-              </button>
-              <button
-                onClick={() => handleExport("md")}
-                disabled={isExporting}
-                className="flex items-center justify-center px-4 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-              >
-                <FiDownload className="h-4 w-4 mr-2" />
-                Markdown
-              </button>
-            </div>
-            <p className="text-xs text-gray-500">
-              JSON形式のファイルは再インポートが可能です
-            </p>
-          </div>
-        </section>
-
-        {/* Import Section */}
-        <section className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-medium text-gray-900">インポート</h2>
-            <p className="mt-1 text-sm text-gray-600">JSONファイルからメモを読み込みます</p>
-          </div>
           <div className="p-6">
-            <label className="block">
-              <div className="flex items-center justify-center px-6 py-8 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                <div className="text-center">
-                  <FiUpload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">
-                    {isImporting ? "インポート中..." : "JSONファイルを選択"}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    重複するIDのメモはスキップされます
-                  </p>
-                </div>
-              </div>
-              <input
-                type="file"
-                accept=".json"
-                onChange={handleImport}
-                disabled={isImporting}
-                className="sr-only"
-              />
-            </label>
+            <button
+              onClick={handleExport}
+              disabled={isExporting}
+              className="flex items-center justify-center px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors w-full"
+            >
+              <FiDownload className="h-4 w-4 mr-2" />
+              CSV
+            </button>
           </div>
         </section>
 
