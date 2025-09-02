@@ -1,6 +1,6 @@
 "use client";
 
-import { FiArrowLeft, FiMapPin, FiBookmark, FiTag, FiSearch, FiDownload, FiShare, FiEdit } from "react-icons/fi";
+import { FiArrowLeft, FiMapPin, FiBookmark, FiTag, FiSearch, FiDownload, FiShare, FiEdit, FiImage, FiMic, FiCloud } from "react-icons/fi";
 import Link from "next/link";
 
 export default function AboutPage() {
@@ -28,12 +28,11 @@ export default function AboutPage() {
                 <FiEdit className="text-blue-500 text-6xl" />
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">QuickNote Solo</h2>
-              <p className="text-gray-600">個人用1行メモPWA</p>
+              <p className="text-gray-600">個人用メモアプリ</p>
             </div>
             <p className="text-sm text-gray-600 leading-relaxed">
               QuickNote Soloは、シンプルで使いやすい個人用メモアプリです。
-              思いついたことをすぐにメモでき、位置情報やタグを付けて整理することができます。
-              PWA（Progressive Web App）として動作するため、オフラインでも使用可能です。
+              思いついたことをすぐにメモでき、音声入力や画像アップロード、位置情報やタグを付けて整理することができます。
             </p>
           </div>
         </section>
@@ -52,7 +51,7 @@ export default function AboutPage() {
                 <div>
                   <h4 className="font-medium text-gray-900">位置情報付きメモ</h4>
                   <p className="text-sm text-gray-600 mt-1">
-                    ボタンをタップして現在地をメモに添付できます
+                    設定で有効にすると現在地を自動でメモに添付できます
                   </p>
                 </div>
               </div>
@@ -106,6 +105,42 @@ export default function AboutPage() {
               </div>
 
               <div className="flex items-start space-x-3">
+                <div className="flex-shrink-0 p-2 bg-red-100 rounded-lg">
+                  <FiImage className="h-5 w-5 text-red-600" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900">画像アップロード</h4>
+                  <p className="text-sm text-gray-600 mt-1">
+                    JPEG, PNG, GIF, WebP対応。自動リサイズ・圧縮で効率保存
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-3">
+                <div className="flex-shrink-0 p-2 bg-pink-100 rounded-lg">
+                  <FiMic className="h-5 w-5 text-pink-600" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900">音声入力</h4>
+                  <p className="text-sm text-gray-600 mt-1">
+                    スマホで大型ボタン、PCで柔軍なモード切り替えで音声入力
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-3">
+                <div className="flex-shrink-0 p-2 bg-sky-100 rounded-lg">
+                  <FiCloud className="h-5 w-5 text-sky-600" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900">クラウド同期</h4>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Firebase連携でデバイス間メモ同期。個人プロジェクトで完全プライベート
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-3">
                 <div className="flex-shrink-0 p-2 bg-indigo-100 rounded-lg">
                   <FiShare className="h-5 w-5 text-indigo-600" />
                 </div>
@@ -137,10 +172,18 @@ export default function AboutPage() {
               </div>
               <div className="flex items-start">
                 <span className="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">3</span>
-                <p>位置情報は外出先でのメモに付けると後で思い出しやすくなります</p>
+                <p>画像はドラッグ&ドロップまたはスマホでスワイプしてファイルモードに切り替え</p>
               </div>
               <div className="flex items-start">
                 <span className="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">4</span>
+                <p>位置情報は外出先でのメモに付けると後で思い出しやすくなります</p>
+              </div>
+              <div className="flex items-start">
+                <span className="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">5</span>
+                <p>Firebase設定でクラウド同期を有効にするとデバイス間でメモが共有されます</p>
+              </div>
+              <div className="flex items-start">
+                <span className="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">6</span>
                 <p>定期的にエクスポート機能でバックアップを取ることをおすすめします</p>
               </div>
             </div>
@@ -153,13 +196,16 @@ export default function AboutPage() {
             <h3 className="text-lg font-medium text-gray-900">技術情報</h3>
           </div>
           <div className="p-6 text-sm text-gray-600 space-y-2">
-            <p><strong>バージョン:</strong> 1.0.0</p>
+            <p><strong>バージョン:</strong> 4.0.0</p>
             <p><strong>フレームワーク:</strong> Next.js 15 (App Router)</p>
-            <p><strong>データ保存:</strong> IndexedDB (ブラウザローカル)</p>
+            <p><strong>データ保存:</strong> IndexedDB (ローカル) / Firestore (クラウド)</p>
+            <p><strong>ストレージ:</strong> Base64 (ローカル) / Firebase Storage (画像)</p>
+            <p><strong>画像形式:</strong> JPEG, PNG, GIF, WebP</p>
+            <p><strong>音声入力:</strong> Web Speech API (Chrome, Safari, Edge)</p>
             <p><strong>PWA:</strong> Service Worker対応</p>
             <p><strong>対応ブラウザ:</strong> Chrome, Firefox, Safari, Edge (最新版)</p>
             <p className="text-xs text-gray-500 mt-4">
-              ※ データはお使いのブラウザにのみ保存され、外部に送信されることはありません
+              ※ データはローカルまたは個人のFirebaseプロジェクトに保存され、第三者に送信されることはありません
             </p>
           </div>
         </section>
