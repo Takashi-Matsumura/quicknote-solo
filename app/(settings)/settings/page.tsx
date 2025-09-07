@@ -8,7 +8,7 @@ import { getAllNotes, clearAllNotes } from "@/lib/db/database";
 import { downloadCsvFile } from "@/lib/export/csv";
 import { getLocationSetting, setLocationSetting } from "@/lib/settings/locationSettings";
 import { getSpeechEnabled, setSpeechEnabled, getSpeechAutoSubmit, setSpeechAutoSubmit, getSpeechLanguage, setSpeechLanguage, SUPPORTED_LANGUAGES } from "@/lib/settings/speechSettings";
-import { getFirebaseSettings, setFirebaseSettings, getStorageType, setStorageType, type StorageType } from "@/lib/settings/firebaseSettings";
+import { getFirebaseSettings, setFirebaseSettings, getStorageType, setStorageType, isFirebaseConfigInEnv, type StorageType } from "@/lib/settings/firebaseSettings";
 import { initializeFirebase, resetFirebase, type FirebaseConfig } from "@/lib/firebase/config";
 import { initializeAuth } from "@/lib/firebase/auth";
 import { getSpeechRecognitionService } from "@/lib/speech/speechRecognition";
@@ -41,6 +41,7 @@ export default function SettingsPage() {
   const [firebaseEnabled, setFirebaseEnabledState] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [configInputMode, setConfigInputMode] = useState<"json" | "manual">("json");
+  const [isEnvConfigAvailable, setIsEnvConfigAvailable] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
@@ -60,6 +61,9 @@ export default function SettingsPage() {
     setSpeechEnabledState(getSpeechEnabled());
     setSpeechAutoSubmitState(getSpeechAutoSubmit());
     setSpeechLanguageState(getSpeechLanguage());
+    
+    // 環境変数の設定確認
+    setIsEnvConfigAvailable(isFirebaseConfigInEnv());
     
     // Firebase設定を読み込み
     const fbSettings = getFirebaseSettings();
@@ -717,13 +721,39 @@ const firebaseConfig = {
                 </div>
               )}
               
+              {/* 環境変数設定の表示 */}
+              {isEnvConfigAvailable && (
+                <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <svg className="h-4 w-4 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-2">
+                      <p className="text-xs text-green-700">
+                        <strong>✅ 環境変数でFirebase設定済み</strong><br />
+                        .env.local ファイルに設定されたFirebase設定が自動的に適用されています
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                 <p className="text-xs text-blue-700">
                   <strong>Firebase設定方法:</strong><br />
+                  <strong>【推奨】環境変数での設定:</strong><br />
+                  1. プロジェクトルートの .env.example を .env.local にコピー<br />
+                  2. Firebase Console → プロジェクト設定 → Config情報を取得<br />
+                  3. .env.local ファイルに実際の値を設定<br />
+                  4. アプリを再起動<br />
+                  <br />
+                  <strong>画面での設定:</strong><br />
                   1. Firebase Consoleでプロジェクト作成<br />
                   2. Firestoreを有効化<br />
                   3. ウェブアプリを追加してConfig情報を取得<br />
-                  4. <strong>JSON</strong>: Config全体をコピー&ペースト（推奨）<br />
+                  4. <strong>JSON</strong>: Config全体をコピー&ペースト<br />
                   5. <strong>手動</strong>: 各フィールドに個別入力
                 </p>
               </div>

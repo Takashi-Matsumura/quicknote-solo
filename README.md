@@ -67,9 +67,50 @@ npm run format
 
 開発サーバー起動後、[http://localhost:3000](http://localhost:3000) でアクセス可能
 
+## 🐳 Docker対応
+
+Dockerコンテナでアプリを実行できます。
+
+### Docker Compose での起動
+
+```bash
+# 環境変数ファイルを準備（Firebase設定）
+cp .env.example .env.local
+# .env.localを編集してFirebase設定を入力
+
+# Docker Composeでビルド・起動
+docker-compose up --build
+
+# またはデタッチドモードで起動
+docker-compose up --build -d
+```
+
+**アクセス:** http://localhost:8080
+
+### Dockerfileのみでの起動
+
+```bash
+# Docker イメージをビルド
+docker build -t quicknote-solo .
+
+# コンテナを起動（環境変数ファイル込み）
+docker run -p 8080:8080 --env-file .env.local quicknote-solo
+```
+
+### Docker環境での注意事項
+
+- **環境変数ファイル**: `.env.local`が自動的にコンテナ内にコピーされます
+- **ポート**: デフォルトで8080ポートを使用（docker-compose.ymlで変更可能）
+- **Firebase設定**: 環境変数で設定されていれば自動的に認識されます
+
 ## ☁️ Firebase設定（クラウド同期・オプション）
 
 デバイス間でメモを同期したい場合は、個人のFirebaseプロジェクトを設定できます。
+
+**設定方法は3つから選択可能：**
+1. **🔧 環境変数設定（推奨）** - 永続化、開発・本番環境対応
+2. **📋 画面からJSON一括設定** - ワンクリック設定
+3. **✏️ 画面から手動入力** - 個別フィールド入力
 
 ### 1. Firebase プロジェクトの作成
 
@@ -115,10 +156,47 @@ npm run format
 
 ### 5. アプリでFirebase設定
 
+#### 🔧 **方法1: 環境変数設定（推奨）**
+
+**永続化設定でFirebase設定を毎回入力する手間を省きます。**
+
+1. プロジェクトルートの `.env.example` を `.env.local` にコピー
+   ```bash
+   cp .env.example .env.local
+   ```
+
+2. `.env.local` を編集してFirebase設定値を入力：
+   ```bash
+   # Firebase Configuration
+   NEXT_PUBLIC_FIREBASE_API_KEY=your-api-key-here
+   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+   NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
+   NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+   NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789012
+   NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789012:web:abcdef123456789
+   ```
+
+3. アプリを再起動
+   ```bash
+   npm run dev
+   ```
+
+4. 設定画面で環境変数設定が認識されていることを確認（緑色の✅マーク表示）
+5. ストレージタイプを「Firebaseクラウド」に変更
+
+**メリット：**
+- ✅ 永続化されるため毎回設定不要
+- ✅ 開発・本番環境で設定を分離可能
+- ✅ Docker環境でも対応
+
+---
+
+#### 📋 **方法2: 画面からJSON一括設定**
+
 1. QuickNote Solo を開き、**設定 → クラウドストレージ設定**
 2. Firebase設定の入力方法を選択：
 
-#### 📋 **JSON形式（推奨・ワンクリック設定）**
+**JSON形式（ワンクリック設定）**
 - **JSON/手動切り替え**で「JSON」を選択
 - Firebase Console の Config を**そのままコピー&ペースト**
 
@@ -145,7 +223,10 @@ npm run format
 }
 ```
 
-#### ✏️ **手動入力形式**
+---
+
+#### ✏️ **方法3: 画面から手動入力**
+
 - **JSON/手動切り替え**で「手動」を選択
 - 各フィールドに個別入力：
    - **API Key**: `apiKey`の値
@@ -155,8 +236,9 @@ npm run format
    - **Messaging Sender ID**: `messagingSenderId`の値
    - **App ID**: `appId`の値
 
-3. **Firebaseに接続**をクリック
-4. **ストレージタイプ**を「Firebaseクラウド」に変更
+**設定完了後：**
+1. **Firebaseに接続**をクリック
+2. **ストレージタイプ**を「Firebaseクラウド」に変更
 
 ### 6. セキュリティルールの設定
 
@@ -233,6 +315,10 @@ quicknote-solo/
 │   ├── manifest.json     # PWAマニフェスト
 │   ├── sw.js            # Service Worker
 │   └── icon-*.png       # PWAアイコン
+├── .env.example          # 環境変数テンプレート
+├── Dockerfile            # Docker設定
+├── docker-compose.yml    # Docker Compose設定
+├── .dockerignore         # Docker除外ファイル
 └── vercel.json          # Vercel設定
 ```
 
@@ -277,6 +363,14 @@ quicknote-solo/
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Takashi-Matsumura/quicknote-solo)
 
 ## ✨ 最新アップデート
+
+### v4.2.0 - Firebase環境変数対応とDocker対応
+- 🔧 **環境変数対応**: Firebase設定を .env.local で永続化、毎回設定不要
+- 🐳 **Docker対応**: Dockerfile と docker-compose.yml でコンテナ化対応
+- ⚙️ **自動設定切り替え**: 環境変数 → 画面設定の優先順位で自動判定
+- 📋 **設定方法拡張**: 環境変数・JSON・手動の3つの設定方法に対応
+- 🔄 **開発・本番分離**: 環境別のFirebase設定管理が可能
+- 📱 **設定画面改良**: 環境変数設定時は緑色の✅ステータス表示
 
 ### v4.1.0 - UIテーマ統一とエクスポート簡素化
 - 🎨 **ネイビーテーマ**: アプリ全体でネイビー色に統一（位置リンク、アイコン、ボタン類）
