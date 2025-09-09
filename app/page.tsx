@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { FiSettings, FiInfo, FiEdit } from "react-icons/fi";
+import { FiSettings, FiInfo, FiEdit, FiRefreshCw } from "react-icons/fi";
 import Link from "next/link";
 
 import type { Note, NoteFilter, FileAttachment } from "@/lib/models/note";
@@ -15,7 +15,9 @@ import {
 import { getCurrentPosition } from "@/lib/geo/getCurrentPosition";
 import { getFirebaseSettings } from "@/lib/settings/firebaseSettings";
 import { initializeFirebase } from "@/lib/firebase/config";
-import { initializeAuth } from "@/lib/firebase/auth";
+import { ensureAuthenticated } from "@/lib/firebase/auth";
+import { getTOTPSecret } from "@/lib/auth/session";
+import { useRouter } from "next/navigation";
 
 import SearchBar from "@/components/SearchBar";
 import TagChips from "@/components/TagChips";
@@ -32,6 +34,7 @@ interface ToastState {
 }
 
 export default function HomePage() {
+  const router = useRouter();
   const [notes, setNotes] = useState<Note[]>([]);
   const [allTags, setAllTags] = useState<string[]>([]);
   const [searchText, setSearchText] = useState("");
@@ -39,6 +42,7 @@ export default function HomePage() {
   const [period, setPeriod] = useState<PeriodFilter>("all");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     title: string;
@@ -50,23 +54,20 @@ export default function HomePage() {
     message: "",
     onConfirm: () => {},
   });
+  const [isSyncing, setIsSyncing] = useState(false);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const [isClient, setIsClient] = useState(false);
 
   const loadNotes = useCallback(async () => {
     try {
-      console.log('loadNotes: Starting to load notes...');
       const filter: NoteFilter = {
         searchText: searchText || undefined,
         tags: selectedTags.length > 0 ? selectedTags : undefined,
         period,
       };
-      console.log('loadNotes: Filter:', filter);
       const result = await searchNotes(filter);
-      console.log('loadNotes: Search result:', result);
       setNotes(result);
-      console.log('loadNotes: Notes state updated with', result.length, 'notes');
     } catch (error) {
-      console.error("Failed to load notes:", error);
       showToast("メモの読み込みに失敗しました", "error");
     }
   }, [searchText, selectedTags, period]);
@@ -76,46 +77,101 @@ export default function HomePage() {
       const tags = await getAllTags();
       setAllTags(tags);
     } catch (error) {
-      console.error("Failed to load tags:", error);
+      // タグ読み込みエラーは無視（メモ機能に影響なし）
     }
   }, []);
 
-  // Initialize Firebase if configured (API enabled version)
+  // クライアントサイドの初期化（Hydration対策）
   useEffect(() => {
-    const initializeFirebaseIfNeeded = async () => {
-      const firebaseSettings = getFirebaseSettings();
-      
-      if (firebaseSettings.enabled && firebaseSettings.config) {
-        console.log('Initializing Firebase with API enabled...');
-        const success = initializeFirebase(firebaseSettings.config);
-        
-        if (success) {
-          // Firebase認証を初期化
-          await initializeAuth();
-          console.log('Firebase initialized successfully - API enabled version');
-          showToast('Firebaseクラウドモードで動作しています', 'success');
+    setIsClient(true);
+  }, []);
+
+  // 認証チェック
+  useEffect(() => {
+    if (!isClient) return;
+
+    const checkAuth = async () => {
+      try {
+        const totpSecret = getTOTPSecret();
+        if (totpSecret) {
+          // まずFirebaseを初期化
+          const firebaseSettings = getFirebaseSettings();
+          if (firebaseSettings.enabled && firebaseSettings.config) {
+            const success = initializeFirebase(firebaseSettings.config);
+            if (success) {
+              const user = await ensureAuthenticated();
+              if (user) {
+                setIsAuthenticated(true);
+              } else {
+                router.push('/auth');
+              }
+            } else {
+              router.push('/auth');
+            }
+          } else {
+            router.push('/auth');
+          }
         } else {
-          console.error('Failed to initialize Firebase on app start');
-          showToast('Firebase接続に失敗しました。ローカルモードで動作します。', 'error');
+          router.push('/auth');
         }
-      } else {
-        console.log('Firebase not configured - using IndexedDB local storage only');
-        showToast('ローカルストレージモードで動作しています', 'info');
+      } catch (error) {
+        showToast('認証確認でエラーが発生しました', 'error');
+        router.push('/auth');
       }
     };
 
-    initializeFirebaseIfNeeded();
-  }, []);
+    checkAuth();
+  }, [isClient, router]);
+
+  // Initialize Firebase success toast (Firebase is already initialized during auth check)
+  useEffect(() => {
+    if (!isClient || !isAuthenticated) return;
+    
+    const firebaseSettings = getFirebaseSettings();
+    if (firebaseSettings.enabled && firebaseSettings.config) {
+      showToast('Firebaseクラウドモードで動作しています', 'success');
+    } else {
+      showToast('ローカルストレージモードで動作しています', 'info');
+    }
+  }, [isClient, isAuthenticated]);
 
   // Load notes and tags
   useEffect(() => {
+    if (!isClient || !isAuthenticated) return;
+    
     loadNotes();
     loadTags();
-  }, [loadNotes, loadTags]);
+  }, [loadNotes, loadTags, isClient, isAuthenticated]);
 
   const showToast = (message: string, type: ToastState["type"] = "info") => {
     setToast({ message, type });
   };
+
+  // メモ同期機能（キャッシュクリア＋リロード）
+  const handleSyncNotes = useCallback(async () => {
+    setIsSyncing(true);
+    showToast('メモを同期中...', 'info');
+    
+    try {
+      // 少し待ってからキャッシュクリア＋リロード
+      setTimeout(() => {
+        // Service Workerのキャッシュをクリア
+        if ('caches' in window) {
+          caches.keys().then(cacheNames => {
+            cacheNames.forEach(cacheName => {
+              caches.delete(cacheName);
+            });
+          });
+        }
+        
+        // ハードリフレッシュを実行
+        window.location.reload();
+      }, 500);
+    } catch (error) {
+      showToast('同期に失敗しました', 'error');
+      setIsSyncing(false);
+    }
+  }, []);
 
   const handleFileDropped = async (file: FileAttachment, text: string) => {
     await handleSubmitNote(text, true, [file]);
@@ -249,6 +305,42 @@ export default function HomePage() {
     setSelectedTags([]);
   };
 
+  // Hydration対策または未認証時は最小限の内容のみ表示
+  if (!isClient || !isAuthenticated) {
+    return (
+      <div className="h-screen bg-gray-50 flex flex-col">
+        {/* Header */}
+        <header className="bg-white border-b border-gray-200 px-4 py-3 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="flex items-center justify-center w-8 h-8 bg-blue-800 rounded-lg mr-2">
+                <FiEdit className="h-5 w-5 text-white" />
+              </div>
+              <h1 className="text-lg font-semibold text-gray-900">QuickNote Solo</h1>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Link 
+                href="/about"
+                className="p-2 text-gray-600 hover:text-gray-800 rounded-lg hover:bg-gray-100"
+              >
+                <FiInfo className="h-5 w-5" />
+              </Link>
+              <Link 
+                href="/settings"
+                className="p-2 text-gray-600 hover:text-gray-800 rounded-lg hover:bg-gray-100"
+              >
+                <FiSettings className="h-5 w-5" />
+              </Link>
+            </div>
+          </div>
+        </header>
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-gray-600">読み込み中...</div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen bg-gray-50 flex flex-col">
       {/* Header */}
@@ -261,6 +353,14 @@ export default function HomePage() {
             <h1 className="text-lg font-semibold text-gray-900">QuickNote Solo</h1>
           </div>
           <div className="flex items-center space-x-2">
+            <button
+              onClick={handleSyncNotes}
+              disabled={isSyncing}
+              className="p-2 text-gray-600 hover:text-gray-800 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="メモを同期"
+            >
+              <FiRefreshCw className={`h-5 w-5 ${isSyncing ? 'animate-spin' : ''}`} />
+            </button>
             <Link 
               href="/about"
               className="p-2 text-gray-600 hover:text-gray-800 rounded-lg hover:bg-gray-100"

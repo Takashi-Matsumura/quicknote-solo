@@ -10,18 +10,13 @@ import * as firestoreOps from './firestore';
 
 // 現在のストレージタイプに基づいて適切なデータベース操作を選択
 function getDbOperations() {
-  const storageType = getStorageType();
   const firebaseReady = isFirebaseInitialized();
   
-  console.log('getDbOperations: storageType =', storageType);
-  console.log('getDbOperations: isFirebaseInitialized =', firebaseReady);
-  
-  if (storageType === 'firebase' && firebaseReady) {
-    console.log('getDbOperations: Using Firestore operations');
+  // Firebaseが初期化されている場合は、ストレージタイプに関係なくFirestoreを使用
+  if (firebaseReady) {
     return firestoreOps;
   }
   
-  console.log('getDbOperations: Using IndexedDB operations');
   return indexedDbOps;
 }
 
@@ -29,12 +24,10 @@ export async function createNote(noteData: Omit<Note, 'id' | 'createdAt' | 'upda
   const ops = getDbOperations();
   
   try {
-    console.log('database.ts createNote: Attempting to create note...');
     return await ops.createNote(noteData);
   } catch (error: unknown) {
     // Firestoreエラーの場合はIndexedDBにフォールバック
     if ((error as Error).message === 'FIRESTORE_DB_NOT_FOUND' || (error as Error).message.includes('timeout')) {
-      console.warn('database.ts createNote: Firestore failed, falling back to IndexedDB...');
       return await indexedDbOps.createNote(noteData);
     }
     throw error;

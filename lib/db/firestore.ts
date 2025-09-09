@@ -8,11 +8,13 @@ import {
   getDoc,
   query,
   Timestamp,
-  getDocsFromServer // リアルタイムリスナーを使わずにサーバーから直接取得
+  getDocsFromServer, // リアルタイムリスナーを使わずにサーバーから直接取得
+  where,
+  orderBy
 } from 'firebase/firestore';
 import type { Note, NoteFilter } from '../models/note';
 import { getFirebaseFirestore, getFirebaseApp } from '../firebase/config';
-import { ensureAuthenticated } from '../firebase/auth';
+import { ensureAuthenticated, getCurrentTOTPUserId } from '../firebase/auth';
 
 const COLLECTION_NAME = 'notes';
 
@@ -49,8 +51,7 @@ async function createNoteViaRestApi(firestoreNote: Omit<FirestoreNote, 'id'>, us
     }
   };
   
-  console.log('REST API request URL:', url);
-  console.log('REST API request data:', restApiData);
+  // REST API フォールバック実行中
   
   const response = await fetch(url, {
     method: 'POST',
@@ -106,10 +107,14 @@ export async function createNote(noteData: Omit<Note, 'id' | 'createdAt' | 'upda
   const user = await ensureAuthenticated();
   if (!user) throw new Error('Authentication required');
 
+  // TOTPユーザーIDを取得
+  const totpUserId = getCurrentTOTPUserId();
+  if (!totpUserId) throw new Error('TOTP User ID not found');
+
   try {
-    console.log('Creating note for user:', user.uid, 'Text:', noteData.text);
+    console.log('Creating note for TOTP user:', totpUserId, 'Firebase UID:', user.uid, 'Text:', noteData.text);
     
-    const firestoreNote = noteToFirestoreNote(noteData, user.uid);
+    const firestoreNote = noteToFirestoreNote(noteData, totpUserId);
     console.log('Firestore note data:', firestoreNote);
     
     console.log('Executing addDoc with timeout protection and REST API fallback...');
@@ -123,14 +128,14 @@ export async function createNote(noteData: Omit<Note, 'id' | 'createdAt' | 'upda
           setTimeout(() => reject(new Error('addDoc timeout after 5 seconds')), 5000)
         )
       ]);
-      console.log('addDoc completed successfully! Document ID:', docRef.id);
+      // addDoc成功
     } catch (addDocError) {
-      console.warn('addDoc failed, trying REST API fallback:', addDocError);
+      // addDoc失敗、REST APIフォールバック実行
       
       // REST API フォールバック
       try {
         const restApiDocRef = await createNoteViaRestApi(firestoreNote, user);
-        console.log('REST API fallback successful! Document ID:', restApiDocRef.id);
+        // REST API フォールバック成功
         docRef = { id: restApiDocRef.id };
       } catch (restError) {
         console.error('Both addDoc and REST API failed:', restError);
@@ -152,8 +157,7 @@ export async function createNote(noteData: Omit<Note, 'id' | 'createdAt' | 'upda
       updatedAt: firestoreNote.updatedAt.toMillis()
     };
 
-    console.log('Note object created:', note);
-    console.log('createNote function returning note to caller');
+    // ノート作成完了
     return note;
   } catch (error) {
     console.error('Error creating note:', error);
@@ -173,6 +177,10 @@ export async function updateNote(id: string, updates: Partial<Omit<Note, 'id' | 
 
   const user = await ensureAuthenticated();
   if (!user) throw new Error('Authentication required');
+
+  // TOTPユーザーIDを取得
+  const totpUserId = getCurrentTOTPUserId();
+  if (!totpUserId) throw new Error('TOTP User ID not found');
 
   const docRef = doc(db, COLLECTION_NAME, id);
   
@@ -198,6 +206,10 @@ export async function deleteNote(id: string): Promise<void> {
   const user = await ensureAuthenticated();
   if (!user) throw new Error('Authentication required');
 
+  // TOTPユーザーIDを取得
+  const totpUserId = getCurrentTOTPUserId();
+  if (!totpUserId) throw new Error('TOTP User ID not found');
+
   const docRef = doc(db, COLLECTION_NAME, id);
   
   // deleteDocにタイムアウトを追加
@@ -216,6 +228,10 @@ export async function getNoteById(id: string): Promise<Note | null> {
   const user = await ensureAuthenticated();
   if (!user) throw new Error('Authentication required');
 
+  // TOTPユーザーIDを取得
+  const totpUserId = getCurrentTOTPUserId();
+  if (!totpUserId) throw new Error('TOTP User ID not found');
+
   const docRef = doc(db, COLLECTION_NAME, id);
   const docSnap = await getDoc(docRef);
 
@@ -223,8 +239,8 @@ export async function getNoteById(id: string): Promise<Note | null> {
 
   const firestoreNote = { id: docSnap.id, ...docSnap.data() } as FirestoreNote;
   
-  // ユーザー権限チェック
-  if (firestoreNote.userId !== user.uid) {
+  // ユーザー権限チェック（TOTPユーザーIDでチェック）
+  if (firestoreNote.userId !== totpUserId) {
     throw new Error('Access denied');
   }
 
@@ -238,36 +254,43 @@ export async function getAllNotes(): Promise<Note[]> {
   const user = await ensureAuthenticated();
   if (!user) throw new Error('Authentication required');
 
+  // TOTPユーザーIDを取得
+  const totpUserId = getCurrentTOTPUserId();
+  if (!totpUserId) throw new Error('TOTP User ID not found');
+
   try {
-    console.log('getAllNotes: Starting query for user:', user.uid);
-    console.log('getAllNotes: User exists:', !!user);
+    // クエリ実行開始
     
     // インデックス不要の最もシンプルなクエリ
     const q = query(collection(db, COLLECTION_NAME));
 
-    console.log('getAllNotes: Executing query with fallback strategy...');
     let querySnapshot;
     try {
       // まずサーバーから直接取得を試行
       querySnapshot = await getDocsFromServer(q);
-      console.log('getAllNotes: Server query completed. Document count:', querySnapshot.size);
     } catch (serverError) {
-      console.warn('getAllNotes: Server fetch failed, falling back to cache:', serverError);
       // サーバー取得が失敗した場合はキャッシュから取得
       querySnapshot = await getDocs(q);
-      console.log('getAllNotes: Cache query completed. Document count:', querySnapshot.size);
     }
     
     const notes: Note[] = [];
 
     querySnapshot.forEach((doc) => {
       const data = doc.data();
-      console.log('getAllNotes: Document data:', { id: doc.id, userId: data.userId, text: data.text?.substring(0, 30) });
+      console.log('getAllNotes: Document data:', { 
+        id: doc.id, 
+        userId: data.userId, 
+        text: data.text?.substring(0, 30),
+        match: data.userId === totpUserId
+      });
       
-      // クライアントサイドでuserIdフィルタリング
-      if (data.userId === user.uid) {
+      // クライアントサイドでuserIdフィルタリング（TOTPユーザーIDでフィルタ）
+      if (data.userId === totpUserId) {
         const firestoreNote = { id: doc.id, ...data } as FirestoreNote;
         notes.push(firestoreNoteToNote(firestoreNote));
+        console.log('getAllNotes: Added note to results:', doc.id);
+      } else {
+        console.log('getAllNotes: Filtered out note:', doc.id, 'Expected:', totpUserId, 'Actual:', data.userId);
       }
     });
 
@@ -278,7 +301,6 @@ export async function getAllNotes(): Promise<Note[]> {
       return b.createdAt - a.createdAt;
     });
 
-    console.log('getAllNotes: Processed notes count:', notes.length);
     return notes;
   } catch (error) {
     console.error('getAllNotes: Error details:', {
@@ -298,34 +320,31 @@ export async function searchNotes(filter: NoteFilter): Promise<Note[]> {
   const user = await ensureAuthenticated();
   if (!user) throw new Error('Authentication required');
 
+  // TOTPユーザーIDを取得
+  const totpUserId = getCurrentTOTPUserId();
+  if (!totpUserId) throw new Error('TOTP User ID not found');
+
   try {
-    console.log('searchNotes: Starting query for user:', user.uid);
-    console.log('searchNotes: Filter:', filter);
     
     // インデックス不要の最もシンプルなクエリ
     const q = query(collection(db, COLLECTION_NAME));
 
-    console.log('searchNotes: Executing query with fallback strategy...');
     let querySnapshot;
     try {
       // まずサーバーから直接取得を試行
       querySnapshot = await getDocsFromServer(q);
-      console.log('searchNotes: Server query completed. Document count:', querySnapshot.size);
     } catch (serverError) {
-      console.warn('searchNotes: Server fetch failed, falling back to cache:', serverError);
       // サーバー取得が失敗した場合はキャッシュから取得
       querySnapshot = await getDocs(q);
-      console.log('searchNotes: Cache query completed. Document count:', querySnapshot.size);
     }
     
     let notes: Note[] = [];
 
     querySnapshot.forEach((doc) => {
       const data = doc.data();
-      console.log('searchNotes: Document data:', { id: doc.id, userId: data.userId, text: data.text?.substring(0, 30) });
       
-      // クライアントサイドでuserIdフィルタリング
-      if (data.userId === user.uid) {
+      // クライアントサイドでuserIdフィルタリング（TOTPユーザーIDでフィルタ）
+      if (data.userId === totpUserId) {
         const firestoreNote = { id: doc.id, ...data } as FirestoreNote;
         notes.push(firestoreNoteToNote(firestoreNote));
       }
@@ -377,7 +396,6 @@ export async function searchNotes(filter: NoteFilter): Promise<Note[]> {
       return b.createdAt - a.createdAt;
     });
 
-    console.log('searchNotes: Processed notes count:', notes.length);
     return notes;
   } catch (error) {
     console.error('searchNotes: Error details:', {
@@ -403,6 +421,10 @@ export async function clearAllNotes(): Promise<void> {
   const user = await ensureAuthenticated();
   if (!user) throw new Error('Authentication required');
 
+  // TOTPユーザーIDを取得
+  const totpUserId = getCurrentTOTPUserId();
+  if (!totpUserId) throw new Error('TOTP User ID not found');
+
   // インデックス不要の最もシンプルなクエリ
   const q = query(collection(db, COLLECTION_NAME));
 
@@ -410,20 +432,17 @@ export async function clearAllNotes(): Promise<void> {
   try {
     // まずサーバーから直接取得を試行
     querySnapshot = await getDocsFromServer(q);
-    console.log('clearAllNotes: Server query completed. Document count:', querySnapshot.size);
   } catch (serverError) {
-    console.warn('clearAllNotes: Server fetch failed, falling back to cache:', serverError);
     // サーバー取得が失敗した場合はキャッシュから取得
     querySnapshot = await getDocs(q);
-    console.log('clearAllNotes: Cache query completed. Document count:', querySnapshot.size);
   }
   
   const batch: Promise<void>[] = [];
 
   querySnapshot.forEach((doc) => {
     const data = doc.data();
-    // クライアントサイドでuserIdフィルタリング
-    if (data.userId === user.uid) {
+    // クライアントサイドでuserIdフィルタリング（TOTPユーザーIDでフィルタ）
+    if (data.userId === totpUserId) {
       batch.push(deleteDoc(doc.ref));
     }
   });

@@ -17,6 +17,7 @@
 - **📝 複数行対応**: Enterで改行、Shift+Enterで送信
 - **🖱️ PC対応**: ダブルクリックで削除メニュー表示
 - **☁️ クラウド同期**: Firebase連携でデバイス間同期（オプション）
+- **🔐 TOTP認証**: Time-based One-Time Password認証でセキュアなデバイス間同期
 - **🔐 プライベート**: 個人のFirebaseプロジェクトで完全プライベート
 - **📋 ワンクリック設定**: Firebase ConsoleからJSON一括コピー&ペースト
 - **🔄 形式自動認識**: JavaScript/JSON形式を自動判別・変換
@@ -27,7 +28,7 @@
 - **フレームワーク**: Next.js 15 + TypeScript
 - **UI**: Tailwind CSS + react-icons
 - **データベース**: IndexedDB (ローカル) / Firestore (クラウド)
-- **認証**: Firebase Authentication (匿名認証)
+- **認証**: TOTP認証 (デバイス間同期) + Firebase Authentication (匿名認証)
 - **音声認識**: Web Speech API
 - **PWA**: Service Worker + Web App Manifest
 - **デプロイ**: Vercel
@@ -363,6 +364,16 @@ quicknote-solo/
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Takashi-Matsumura/quicknote-solo)
 
 ## ✨ 最新アップデート
+
+### v5.0.0 - TOTP認証システム導入
+- 🔐 **TOTP認証**: Time-based One-Time Password認証システムでセキュアなクロスデバイス同期
+- 📱 **QRコード設定**: AuthenticatorアプリでのQRコードスキャン対応
+- 🔑 **シークレットキー入力**: 手動でのシークレットキー入力も対応
+- 🔄 **自動認証**: 6桁入力完了時の自動認証実行
+- 🎨 **モダンUI**: React-iconsを使用した統一されたアイコンデザイン
+- ⚡ **スムーズUX**: シークレットキー保存済みユーザーは即座にログイン画面表示
+- 🛡️ **セキュア設計**: LocalStorageでのシークレットキー永続化、ログアウト時も保持
+- 🔁 **柔軟な設定**: 新規作成・既存キー入力・保存済み認証の3つの設定フロー
 
 ### v4.2.0 - Firebase環境変数対応とDocker対応
 - 🔧 **環境変数対応**: Firebase設定を .env.local で永続化、毎回設定不要

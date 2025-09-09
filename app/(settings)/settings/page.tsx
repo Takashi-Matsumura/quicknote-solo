@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FiDownload, FiTrash2, FiArrowLeft, FiMapPin, FiMic } from "react-icons/fi";
+import { FiDownload, FiTrash2, FiArrowLeft, FiMapPin, FiMic, FiLogOut } from "react-icons/fi";
 import Link from "next/link";
 
 import { getAllNotes, clearAllNotes } from "@/lib/db/database";
@@ -10,7 +10,8 @@ import { getLocationSetting, setLocationSetting } from "@/lib/settings/locationS
 import { getSpeechEnabled, setSpeechEnabled, getSpeechAutoSubmit, setSpeechAutoSubmit, getSpeechLanguage, setSpeechLanguage, SUPPORTED_LANGUAGES } from "@/lib/settings/speechSettings";
 import { getFirebaseSettings, setFirebaseSettings, getStorageType, setStorageType, isFirebaseConfigInEnv, type StorageType } from "@/lib/settings/firebaseSettings";
 import { initializeFirebase, resetFirebase, type FirebaseConfig } from "@/lib/firebase/config";
-import { initializeAuth } from "@/lib/firebase/auth";
+import { initializeAuth, signOut } from "@/lib/firebase/auth";
+import { useRouter } from "next/navigation";
 import { getSpeechRecognitionService } from "@/lib/speech/speechRecognition";
 import Toast from "@/components/Toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -21,6 +22,7 @@ interface ToastState {
 }
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [isExporting, setIsExporting] = useState(false);
   const [locationEnabled, setLocationEnabled] = useState(true);
   const [speechEnabled, setSpeechEnabledState] = useState(true);
@@ -28,6 +30,7 @@ export default function SettingsPage() {
   const [speechLanguage, setSpeechLanguageState] = useState("ja-JP");
   const [speechService] = useState(() => getSpeechRecognitionService());
   const [isClient, setIsClient] = useState(false);
+  const [totpSecret, setTotpSecret] = useState<string>('');
   const [storageType, setStorageTypeState] = useState<StorageType>("local");
   const [firebaseConfig, setFirebaseConfigState] = useState<FirebaseConfig>({
     apiKey: "",
@@ -47,11 +50,13 @@ export default function SettingsPage() {
     isOpen: boolean;
     title: string;
     message: string;
+    confirmText: string;
     onConfirm: () => void;
   }>({
     isOpen: false,
     title: "",
     message: "",
+    confirmText: "",
     onConfirm: () => {},
   });
 
@@ -61,6 +66,12 @@ export default function SettingsPage() {
     setSpeechEnabledState(getSpeechEnabled());
     setSpeechAutoSubmitState(getSpeechAutoSubmit());
     setSpeechLanguageState(getSpeechLanguage());
+    
+    // TOTPシークレットを取得
+    const secret = localStorage.getItem('totp_secret');
+    if (secret) {
+      setTotpSecret(secret);
+    }
     
     // 環境変数の設定確認
     setIsEnvConfigAvailable(isFirebaseConfigInEnv());
@@ -313,12 +324,26 @@ export default function SettingsPage() {
     }
   };
 
+  const handleLogout = () => {
+    setConfirmDialog({
+      isOpen: true,
+      title: "ログアウト",
+      message: "ログアウトしますか？再度アクセスするにはTOTP認証が必要になります。",
+      confirmText: "ログアウト",
+      onConfirm: () => {
+        signOut();
+        setConfirmDialog({ ...confirmDialog, isOpen: false });
+        router.push('/auth');
+      },
+    });
+  };
 
   const handleClearAllData = () => {
     setConfirmDialog({
       isOpen: true,
       title: "全データを削除",
       message: "すべてのメモを削除します。この操作は元に戻せません。続行しますか？",
+      confirmText: "削除",
       onConfirm: async () => {
         try {
           await clearAllNotes();
@@ -348,6 +373,22 @@ export default function SettingsPage() {
       </header>
 
       <div className="px-4 py-6 space-y-6">
+        {/* Logout Section - Placed at top for easy access */}
+        <section className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="p-6">
+            <button
+              onClick={handleLogout}
+              className="flex items-center justify-center px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors w-full"
+            >
+              <FiLogOut className="h-4 w-4 mr-2" />
+              ログアウト
+            </button>
+            <p className="mt-2 text-sm text-gray-600 text-center">
+              ログアウト後、再度アクセスするにはTOTP認証コードが必要になります。
+            </p>
+          </div>
+        </section>
+
         {/* Location Settings Section */}
         <section className="bg-white rounded-lg shadow-sm border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200">
@@ -779,6 +820,46 @@ const firebaseConfig = {
           </div>
         </section>
 
+        {/* Authentication Section */}
+        <section className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-medium text-gray-900">認証</h2>
+            <p className="mt-1 text-sm text-gray-600">TOTP認証の管理</p>
+          </div>
+          <div className="p-6 space-y-4">
+            {/* シークレットキー表示 */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="text-sm font-medium text-gray-900 mb-2">
+                手動入力用シークレット
+              </h3>
+              <p className="text-xs text-gray-600 mb-3">
+                他のブラウザで「既存のTOTP認証で入力」を選択した際に使用してください
+              </p>
+              {isClient && totpSecret ? (
+                <div className="bg-white border rounded p-3">
+                  <code className="text-sm font-mono text-gray-800 break-all">
+                    {totpSecret.match(/.{1,4}/g)?.join(' ') || totpSecret}
+                  </code>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(totpSecret);
+                      showToast('シークレットキーをコピーしました', 'success');
+                    }}
+                    className="ml-3 text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded transition-colors"
+                  >
+                    コピー
+                  </button>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">
+                  {isClient ? 'TOTPシークレットが見つかりません' : '読み込み中...'}
+                </p>
+              )}
+            </div>
+
+          </div>
+        </section>
+
         {/* Danger Zone */}
         <section className="bg-white rounded-lg shadow-sm border border-red-200">
           <div className="px-6 py-4 border-b border-red-200">
@@ -828,7 +909,7 @@ const firebaseConfig = {
         isOpen={confirmDialog.isOpen}
         title={confirmDialog.title}
         message={confirmDialog.message}
-        confirmText="削除"
+        confirmText={confirmDialog.confirmText}
         onConfirm={confirmDialog.onConfirm}
         onCancel={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
       />

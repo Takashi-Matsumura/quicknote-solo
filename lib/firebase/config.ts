@@ -22,23 +22,25 @@ export function initializeFirebase(config: FirebaseConfig) {
     app = initializeApp(config);
     
     // Firestoreの設定（WebChannel Listen/Write 400エラー完全対策）
-    // リアルタイム機能を完全に無効化
+    // リアルタイム機能とキャッシュを完全に無効化
     try {
       db = initializeFirestore(app, {
         // リアルタイム接続を強制的に無効化
         experimentalForceLongPolling: true,  // WebChannelではなくXHRポーリングを使用
         ignoreUndefinedProperties: true,
-        // ローカルキャッシュを無効化  
+        // ローカルキャッシュを完全無効化（メモデータの同期問題を解決）
         localCache: {
-          kind: 'memory'
+          kind: 'memory',
+          // メモリキャッシュも最小化
+          garageCollector: {
+            maxCacheSizeBytes: 1, // 最小キャッシュサイズ
+          }
         }
       });
-      console.log('Firestore initialized with Long Polling (WebChannel disabled)');
+      // Firestore初期化成功
     } catch (initError) {
-      console.warn('initializeFirestore failed, using fallback:', initError);
       // フォールバック：通常のgetFirestoreを使用
       db = getFirestore(app);
-      console.log('Firestore initialized with standard method');
     }
     
     auth = getAuth(app);
@@ -46,18 +48,13 @@ export function initializeFirebase(config: FirebaseConfig) {
     // Firebase Storage初期化
     try {
       storage = getStorage(app);
-      console.log('Firebase Storage initialized successfully');
     } catch (storageError) {
-      console.warn('Firebase Storage initialization failed:', storageError);
-      console.warn('Firebase Storage may not be enabled for this project');
       // Storage失敗でも他のサービスは使用可能
       storage = null;
     }
     
-    console.log('Firebase initialized successfully - WebChannel Listen/Write disabled');
     return true;
   } catch (error) {
-    console.error('Firebase initialization completely failed:', error);
     return false;
   }
 }
