@@ -10,7 +10,6 @@ import {
   getTOTPSecret,
   getTOTPUserId
 } from '@/lib/auth/enhancedSession';
-import { loginWithTOTP, registerDeviceAndLogin } from '@/lib/auth/session';
 import EnhancedSecureStorage from '@/lib/utils/enhancedSecureStorage';
 import { 
   HiDevicePhoneMobile, 

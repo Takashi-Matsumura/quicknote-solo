@@ -49,6 +49,8 @@ export async function initializeTOTPAuth(userId: string): Promise<User | null> {
         displayName: null,
         email: null,
         photoURL: null,
+        phoneNumber: null,
+        providerId: 'anonymous',
         emailVerified: false,
         isAnonymous: true,
         metadata: {
@@ -57,7 +59,12 @@ export async function initializeTOTPAuth(userId: string): Promise<User | null> {
         },
         providerData: [],
         refreshToken: '',
-        tenantId: null
+        tenantId: null,
+        delete: () => Promise.resolve(),
+        getIdToken: () => Promise.resolve(userId),
+        getIdTokenResult: () => Promise.resolve({} as any),
+        reload: () => Promise.resolve(),
+        toJSON: () => ({})
       } as User;
       
       currentUser = pseudoUser;
@@ -156,6 +163,8 @@ export async function ensureAuthenticated(): Promise<User | null> {
     displayName: null,
     email: null,
     photoURL: null,
+    phoneNumber: null,
+    providerId: 'anonymous',
     emailVerified: false,
     isAnonymous: true,
     metadata: {
@@ -165,7 +174,11 @@ export async function ensureAuthenticated(): Promise<User | null> {
     providerData: [],
     refreshToken: '',
     tenantId: null,
-    getIdToken: async () => sessionUserId // TOTPユーザーIDをトークンとして使用
+    delete: () => Promise.resolve(),
+    getIdToken: async () => sessionUserId, // TOTPユーザーIDをトークンとして使用
+    getIdTokenResult: () => Promise.resolve({} as any),
+    reload: () => Promise.resolve(),
+    toJSON: () => ({})
   } as User;
   
   currentUser = pseudoUser;

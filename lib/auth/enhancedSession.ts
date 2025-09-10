@@ -256,7 +256,7 @@ export const logoutEnhanced = (): void => {
 /**
  * 登録済みデバイス一覧取得（強化版）
  */
-export const getRegisteredDevicesEnhanced = (googleProfile?: GoogleAuthProfile): any[] => {
+export const getRegisteredDevicesEnhanced = (googleProfile?: GoogleAuthProfile): unknown[] => {
   const userId = getTOTPUserId(googleProfile);
   if (!userId || !googleProfile) return [];
   

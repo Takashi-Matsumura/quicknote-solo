@@ -25,7 +25,7 @@ export function useAuthFlow() {
             
             // 強化セッション管理システムで認証チェック（緊急バイパス対応）
             const hasEmergencySession = sessionStorage.getItem('auth_session');
-            const isEnhancedAuthenticated = EnhancedSessionManager.isAuthenticated(currentProfile);
+            const isEnhancedAuthenticated = EnhancedSessionManager.isAuthenticated(currentProfile || undefined);
             Logger.log('useAuthFlow: Enhanced authentication status', { isAuthenticated: isEnhancedAuthenticated, hasEmergencySession: !!hasEmergencySession });
             
             // 緊急セッションが存在する場合は認証をバイパス
