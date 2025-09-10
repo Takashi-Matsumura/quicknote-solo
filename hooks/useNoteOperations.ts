@@ -10,6 +10,8 @@ import {
 import { getCurrentPosition } from '@/lib/geo/getCurrentPosition';
 import { getLocationSetting } from '@/lib/settings/locationSettings';
 import { ErrorHandler, ErrorMessages } from '@/lib/utils/errorHandler';
+import { getCurrentTOTPUserId } from '@/lib/firebase/auth';
+import { SessionManager } from '@/lib/auth/session';
 
 export type PeriodFilter = "today" | "7d" | "30d" | "all";
 
@@ -20,8 +22,46 @@ export function useNoteOperations() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [period, setPeriod] = useState<PeriodFilter>("all");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAuthReady, setIsAuthReady] = useState(false);
+
+  // 認証状態の確認
+  const checkAuthReady = useCallback(async () => {
+    const sessionUserId = SessionManager.getSession();
+    const totpUserId = getCurrentTOTPUserId();
+    
+    console.log('Auth check:', { sessionUserId, totpUserId, isAuthenticated: SessionManager.isAuthenticated() });
+    
+    // セッションまたはTOTPユーザーIDのどちらかが利用可能であれば認証完了とみなす
+    if (sessionUserId || totpUserId) {
+      setIsAuthReady(true);
+      return true;
+    }
+    
+    // 両方とも利用できない場合、少し待ってから再チェック
+    await new Promise(resolve => setTimeout(resolve, 100));
+    const retrySessionUserId = SessionManager.getSession();
+    const retryTotpUserId = getCurrentTOTPUserId();
+    
+    console.log('Auth retry check:', { retrySessionUserId, retryTotpUserId });
+    
+    if (retrySessionUserId || retryTotpUserId) {
+      setIsAuthReady(true);
+      return true;
+    }
+    
+    // まだ認証が準備できていない場合は、ローカルストレージのみでも動作を許可
+    console.log('No auth ready, falling back to local-only mode');
+    setIsAuthReady(true);
+    return true;
+  }, []);
 
   const loadNotes = useCallback(async () => {
+    // 認証が準備できていない場合は処理をスキップ
+    if (!isAuthReady) {
+      console.log('Auth not ready, skipping note loading');
+      return;
+    }
+
     try {
       await ErrorHandler.withErrorHandling(
         async () => {
@@ -39,9 +79,15 @@ export function useNoteOperations() {
     } catch (error) {
       console.error('Failed to load notes:', error);
     }
-  }, [searchText, selectedTags, period]);
+  }, [searchText, selectedTags, period, isAuthReady]);
 
   const loadTags = useCallback(async () => {
+    // 認証が準備できていない場合は処理をスキップ
+    if (!isAuthReady) {
+      console.log('Auth not ready, skipping tag loading');
+      return;
+    }
+
     try {
       await ErrorHandler.withErrorHandling(
         async () => {
@@ -54,13 +100,19 @@ export function useNoteOperations() {
     } catch (error) {
       console.error('Failed to load tags:', error);
     }
-  }, []);
+  }, [isAuthReady]);
 
   const handleCreateNote = useCallback(async (
     text: string, 
     attachments?: FileAttachment[]
   ): Promise<boolean> => {
     if (!text.trim() && (!attachments || attachments.length === 0)) {
+      return false;
+    }
+
+    // 認証チェック
+    if (!isAuthReady) {
+      console.log('Auth not ready, cannot create note');
       return false;
     }
 
@@ -104,7 +156,7 @@ export function useNoteOperations() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [loadNotes, loadTags]);
+  }, [loadNotes, loadTags, isAuthReady]);
 
   const handleUpdateNote = useCallback(async (
     id: string, 
@@ -151,13 +203,37 @@ export function useNoteOperations() {
     await loadTags();
   }, [handleUpdateNote, loadTags]);
 
+  // 認証状態の初期化
   useEffect(() => {
-    loadNotes();
-  }, [loadNotes]);
+    let mounted = true;
+
+    const initAuth = async () => {
+      const authReady = await checkAuthReady();
+      if (mounted && authReady) {
+        console.log('Auth ready, loading initial data');
+        await Promise.all([loadNotes(), loadTags()]);
+      }
+    };
+
+    initAuth();
+
+    return () => {
+      mounted = false;
+    };
+  }, [checkAuthReady, loadNotes, loadTags]);
+
+  // 認証が準備できた後にデータを読み込み
+  useEffect(() => {
+    if (isAuthReady) {
+      loadNotes();
+    }
+  }, [loadNotes, isAuthReady]);
 
   useEffect(() => {
-    loadTags();
-  }, [loadTags]);
+    if (isAuthReady) {
+      loadTags();
+    }
+  }, [loadTags, isAuthReady]);
 
   return {
     // State

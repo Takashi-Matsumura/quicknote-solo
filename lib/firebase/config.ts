@@ -34,7 +34,7 @@ export function initializeFirebase(config: FirebaseConfig) {
         }
       });
       // Firestore初期化成功
-    } catch (initError) {
+    } catch (_initError) {
       // フォールバック：通常のgetFirestoreを使用
       db = getFirestore(app);
     }
@@ -44,13 +44,13 @@ export function initializeFirebase(config: FirebaseConfig) {
     // Firebase Storage初期化
     try {
       storage = getStorage(app);
-    } catch (storageError) {
+    } catch (_storageError) {
       // Storage失敗でも他のサービスは使用可能
       storage = null;
     }
     
     return true;
-  } catch (error) {
+  } catch (_error) {
     return false;
   }
 }

@@ -82,7 +82,7 @@ export class TOTPService {
 
       const isValid = delta !== null;
       return isValid;
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }
@@ -91,7 +91,7 @@ export class TOTPService {
     try {
       const currentToken = this.generateToken(secret);
       return this.verifyToken(currentToken, secret);
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }
@@ -113,7 +113,7 @@ export class TOTPService {
 
       // 現在時刻のトークン生成
       return totp.generate();
-    } catch (error) {
+    } catch (_error) {
       return '000000'; // フォールバック値
     }
   }

@@ -30,7 +30,7 @@ class SecureStorage {
   private static getDeviceFingerprint(): string {
     if (typeof window === 'undefined') return 'server';
     
-    // デバイス固有の情報を組み合わせてパスフレーズを生成
+    // デバイス固有の情報を組み合わせてパスフレーズを生成（セッション要素を除去）
     const navigator = window.navigator;
     const screen = window.screen;
     
@@ -41,11 +41,11 @@ class SecureStorage {
       screen.height,
       screen.colorDepth,
       new Date().getTimezoneOffset(),
-      // セッション固有の要素（ページ読み込み時に生成）
-      sessionStorage.getItem('session_id') || (() => {
-        const sessionId = Math.random().toString(36).substring(2);
-        sessionStorage.setItem('session_id', sessionId);
-        return sessionId;
+      // デバイス固有の安定したID（localStorageに永続化）
+      localStorage.getItem('device_id') || (() => {
+        const deviceId = Math.random().toString(36).substring(2) + Date.now().toString(36);
+        localStorage.setItem('device_id', deviceId);
+        return deviceId;
       })()
     ].join('|');
 
@@ -131,15 +131,19 @@ class SecureStorage {
       const plaintextUserId = localStorage.getItem('totp_user_id');
       
       if (plaintextSecret || plaintextUserId) {
+        console.log('Migrating plaintext TOTP data to encrypted storage');
+        
         // 暗号化して保存
         if (plaintextSecret) {
           this.setTOTPSecret(plaintextSecret);
           localStorage.removeItem('totp_secret');
+          console.log('TOTP secret migrated successfully');
         }
         
         if (plaintextUserId) {
           this.setTOTPUserId(plaintextUserId);
           localStorage.removeItem('totp_user_id');
+          console.log('TOTP user ID migrated successfully');
         }
         
         return true;
@@ -150,6 +154,40 @@ class SecureStorage {
       console.error('Migration failed:', error);
       return false;
     }
+  }
+
+  // 暗号化データの復旧を試行（デバイスIDが変更された場合など）
+  static attemptDataRecovery(): { secret: string | null; userId: string | null } {
+    if (typeof window === 'undefined') return { secret: null, userId: null };
+
+    console.log('Attempting TOTP data recovery...');
+    
+    // 平文データが残っている場合
+    const plaintextSecret = localStorage.getItem('totp_secret');
+    const plaintextUserId = localStorage.getItem('totp_user_id');
+    
+    if (plaintextSecret || plaintextUserId) {
+      console.log('Found plaintext TOTP data, using as fallback');
+      return { 
+        secret: plaintextSecret, 
+        userId: plaintextUserId 
+      };
+    }
+
+    // バックアップキーの確認（将来的に実装可能）
+    const backupSecret = localStorage.getItem('totp_secret_backup');
+    const backupUserId = localStorage.getItem('totp_user_id_backup');
+    
+    if (backupSecret || backupUserId) {
+      console.log('Found backup TOTP data');
+      return { 
+        secret: backupSecret, 
+        userId: backupUserId 
+      };
+    }
+
+    console.log('No recoverable TOTP data found');
+    return { secret: null, userId: null };
   }
 }
 

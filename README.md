@@ -17,7 +17,10 @@
 - **📝 複数行対応**: Enterで改行、Shift+Enterで送信
 - **🖱️ PC対応**: ダブルクリックで削除メニュー表示
 - **☁️ クラウド同期**: Firebase連携でデバイス間同期（オプション）
-- **🔐 TOTP認証**: Time-based One-Time Password認証でセキュアなデバイス間同期
+- **🔐 3層セキュリティ**: Google OAuth + TOTP認証 + デバイス認証による最高レベル保護
+- **🖥️ デバイス認証**: ハードウェアフィンガープリント（WebGL・Canvas・システム情報）による端末識別
+- **🔒 強化暗号化**: Google UID + AES暗号化でシークレットキーを安全保存
+- **🛡️ セキュリティヘッダー**: XSS、CSRF、クリックジャッキング対策完備
 - **🔐 プライベート**: 個人のFirebaseプロジェクトで完全プライベート
 - **📋 ワンクリック設定**: Firebase ConsoleからJSON一括コピー&ペースト
 - **🔄 形式自動認識**: JavaScript/JSON形式を自動判別・変換
@@ -25,13 +28,14 @@
 
 ## 🛠️ 技術スタック
 
-- **フレームワーク**: Next.js 15 + TypeScript
+- **フレームワーク**: Next.js 15 + TypeScript + Turbopack
 - **UI**: Tailwind CSS + react-icons
 - **データベース**: IndexedDB (ローカル) / Firestore (クラウド)
-- **認証**: TOTP認証 (デバイス間同期) + Firebase Authentication (匿名認証)
+- **認証**: 3層セキュリティ (Google OAuth + TOTP + デバイス認証) + Firebase Authentication
+- **セキュリティ**: AES暗号化 (crypto-js) + セキュリティヘッダー
 - **音声認識**: Web Speech API
 - **PWA**: Service Worker + Web App Manifest
-- **デプロイ**: Vercel
+- **デプロイ**: Vercel + セキュリティ最適化
 
 ## 📱 インストール方法
 
@@ -53,7 +57,7 @@ npm install
 # 開発サーバー起動
 npm run dev
 
-# 本番ビルド
+# 本番ビルド（Turbopack対応）
 npm run build
 
 # リンター実行
@@ -67,6 +71,21 @@ npm run format
 ```
 
 開発サーバー起動後、[http://localhost:3000](http://localhost:3000) でアクセス可能
+
+### 🔒 本番デプロイ時のセキュリティ
+
+本番環境へのデプロイ前に、**必ず** `DEPLOYMENT_SECURITY.md` のチェックリストを実行してください：
+
+```bash
+# セキュリティガイドを確認
+cat DEPLOYMENT_SECURITY.md
+
+# 機密情報の確認
+git log --all --grep="API" --grep="key" --grep="secret" -i
+
+# 依存関係の脆弱性チェック
+npm audit --audit-level=moderate
+```
 
 ## 🐳 Docker対応
 
@@ -295,17 +314,24 @@ quicknote-solo/
 │   ├── SearchBar.tsx      # 検索バー
 │   └── ...
 ├── lib/                   # ユーティリティ
+│   ├── auth/             # 認証システム
+│   │   ├── session.ts    # セッション管理
+│   │   ├── deviceAuth.ts # デバイス認証
+│   │   ├── enhancedSession.ts # 拡張セッション
+│   │   └── googleAuth.ts # Google認証
 │   ├── db/               # データベース操作
 │   │   ├── database.ts   # 統合データベースインターフェース
 │   │   ├── indexedDb.ts  # IndexedDB操作（ローカル）
 │   │   └── firestore.ts  # Firestore操作（クラウド）
 │   ├── firebase/         # Firebase設定
 │   │   ├── config.ts     # Firebase初期化
-│   │   └── auth.ts       # 匿名認証
-│   ├── hooks/            # カスタムReactフック
-│   │   └── useDevice.ts  # デバイス検出フック
+│   │   └── auth.ts       # Firebase認証
 │   ├── utils/            # ユーティリティ関数
-│   │   └── device.ts     # デバイス判定機能
+│   │   ├── device.ts     # デバイス判定機能
+│   │   ├── secureStorage.ts # セキュアストレージ
+│   │   ├── enhancedSecureStorage.ts # 拡張セキュアストレージ
+│   │   ├── errorHandler.ts # エラーハンドリング
+│   │   └── logger.ts     # ログシステム
 │   ├── export/           # エクスポート機能
 │   ├── import/           # インポート機能
 │   ├── geo/              # 位置情報取得
@@ -317,10 +343,11 @@ quicknote-solo/
 │   ├── sw.js            # Service Worker
 │   └── icon-*.png       # PWAアイコン
 ├── .env.example          # 環境変数テンプレート
+├── DEPLOYMENT_SECURITY.md # デプロイセキュリティガイド
 ├── Dockerfile            # Docker設定
 ├── docker-compose.yml    # Docker Compose設定
 ├── .dockerignore         # Docker除外ファイル
-└── vercel.json          # Vercel設定
+└── vercel.json          # Vercel設定（セキュリティヘッダー含む）
 ```
 
 ## 🎮 使い方
@@ -364,6 +391,25 @@ quicknote-solo/
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Takashi-Matsumura/quicknote-solo)
 
 ## ✨ 最新アップデート
+
+### v6.1.0 - エンタープライズレベル3層セキュリティシステム完成 🛡️
+- 🔐 **3層防御システム**: Google OAuth + TOTP認証 + デバイス認証による最高レベルのセキュリティ
+- 🖥️ **デバイスフィンガープリント**: ハードウェア情報・WebGL・Canvas指紋による一意デバイス識別
+- 🔑 **強化暗号化**: Google UID + AES暗号化によるシークレットキー保護
+- 🌐 **クロスデバイス管理**: 登録済みデバイス管理とセキュアな新端末登録フロー
+- 🛡️ **攻撃耐性**: パスワード漏洩・TOTP漏洩・デバイス盗難への多層防御
+- 📱 **シームレスUX**: 登録済みデバイスでの自動認証と未登録端末の安全な登録
+- 🔄 **セッション永続化**: ログアウト後もシークレットキー保持で再ログイン簡素化
+- 💎 **個人利用最適化**: GitHubパブリック対応・学習目的でのセキュリティ実装
+
+### v6.0.0 - セキュリティ基盤強化とVercelデプロイ対応 🔒
+- 🔐 **暗号化機能強化**: TOTPシークレットキーのAES暗号化保存でセキュリティ大幅向上
+- 🌐 **Vercel最適化**: セキュリティヘッダー設定とパフォーマンス最適化でプロダクション対応
+- 🛡️ **Google認証統合**: Google One Tap、OAuth、Apps Scriptによる包括的な認証システム
+- 📋 **セキュリティガイド**: DEPLOYMENT_SECURITY.mdによるデプロイ時のセキュリティチェックリスト
+- ⚡ **ビルド最適化**: Turbopack対応でビルド速度向上とNext.js 15完全対応
+- 🎯 **エラーハンドリング**: 統一されたエラー管理とログシステム
+- 💾 **セキュアストレージ**: 暗号化されたローカルストレージ管理
 
 ### v5.0.0 - TOTP認証システム導入
 - 🔐 **TOTP認証**: Time-based One-Time Password認証システムでセキュアなクロスデバイス同期

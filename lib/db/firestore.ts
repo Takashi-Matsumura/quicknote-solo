@@ -8,9 +8,7 @@ import {
   getDoc,
   query,
   Timestamp,
-  getDocsFromServer, // リアルタイムリスナーを使わずにサーバーから直接取得
-  where,
-  orderBy
+  getDocsFromServer // リアルタイムリスナーを使わずにサーバーから直接取得
 } from 'firebase/firestore';
 import type { Note, NoteFilter } from '../models/note';
 import { getFirebaseFirestore, getFirebaseApp } from '../firebase/config';
@@ -102,14 +100,30 @@ function noteToFirestoreNote(note: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>,
 
 export async function createNote(noteData: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>): Promise<Note> {
   const db = getFirebaseFirestore();
-  if (!db) throw new Error('Firestore not initialized');
+  if (!db) {
+    console.error('Firestore not initialized');
+    throw new Error('Firestore not initialized');
+  }
 
+  console.log('createNote: Starting authentication check');
   const user = await ensureAuthenticated();
-  if (!user) throw new Error('Authentication required');
+  if (!user) {
+    console.log('createNote: Authentication failed - no user (will fallback to IndexedDB)');
+    throw new Error('Authentication required');
+  }
 
   // TOTPユーザーIDを取得
   const totpUserId = getCurrentTOTPUserId();
-  if (!totpUserId) throw new Error('TOTP User ID not found');
+  if (!totpUserId) {
+    console.error('createNote: TOTP User ID not found');
+    throw new Error('TOTP User ID not found');
+  }
+
+  console.log('createNote: Authentication successful', { 
+    firebaseUid: user.uid, 
+    totpUserId, 
+    noteText: noteData.text?.substring(0, 30) 
+  });
 
   try {
     console.log('Creating note for TOTP user:', totpUserId, 'Firebase UID:', user.uid, 'Text:', noteData.text);
@@ -268,7 +282,7 @@ export async function getAllNotes(): Promise<Note[]> {
     try {
       // まずサーバーから直接取得を試行
       querySnapshot = await getDocsFromServer(q);
-    } catch (serverError) {
+    } catch (_serverError) {
       // サーバー取得が失敗した場合はキャッシュから取得
       querySnapshot = await getDocs(q);
     }
@@ -333,7 +347,7 @@ export async function searchNotes(filter: NoteFilter): Promise<Note[]> {
     try {
       // まずサーバーから直接取得を試行
       querySnapshot = await getDocsFromServer(q);
-    } catch (serverError) {
+    } catch (_serverError) {
       // サーバー取得が失敗した場合はキャッシュから取得
       querySnapshot = await getDocs(q);
     }
@@ -432,7 +446,7 @@ export async function clearAllNotes(): Promise<void> {
   try {
     // まずサーバーから直接取得を試行
     querySnapshot = await getDocsFromServer(q);
-  } catch (serverError) {
+  } catch (_serverError) {
     // サーバー取得が失敗した場合はキャッシュから取得
     querySnapshot = await getDocs(q);
   }

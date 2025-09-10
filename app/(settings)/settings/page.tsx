@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FiDownload, FiTrash2, FiArrowLeft, FiMapPin, FiMic, FiLogOut } from "react-icons/fi";
+import { FiDownload, FiTrash2, FiArrowLeft, FiMapPin, FiMic, FiLogOut, FiSmartphone } from "react-icons/fi";
 import Link from "next/link";
 
 import { getAllNotes, clearAllNotes } from "@/lib/db/database";
@@ -10,11 +10,16 @@ import { getLocationSetting, setLocationSetting } from "@/lib/settings/locationS
 import { getSpeechEnabled, setSpeechEnabled, getSpeechAutoSubmit, setSpeechAutoSubmit, getSpeechLanguage, setSpeechLanguage, SUPPORTED_LANGUAGES } from "@/lib/settings/speechSettings";
 import { getFirebaseSettings, setFirebaseSettings, getStorageType, setStorageType, isFirebaseConfigInEnv, type StorageType } from "@/lib/settings/firebaseSettings";
 import { initializeFirebase, resetFirebase, type FirebaseConfig } from "@/lib/firebase/config";
-import { initializeAuth, signOut } from "@/lib/firebase/auth";
+import { initializeAuth } from "@/lib/firebase/auth";
+import { logoutTOTP } from "@/lib/auth/session";
 import { useRouter } from "next/navigation";
 import { getSpeechRecognitionService } from "@/lib/speech/speechRecognition";
 import Toast from "@/components/Toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import DeviceManagement from "@/components/DeviceManagement";
+import { GoogleAuthService } from '@/lib/auth/googleAuth';
+import EnhancedSecureStorage from '@/lib/utils/enhancedSecureStorage';
+import { getTOTPUserId } from '@/lib/auth/session';
 
 interface ToastState {
   message: string;
@@ -59,6 +64,8 @@ export default function SettingsPage() {
     confirmText: "",
     onConfirm: () => {},
   });
+  const [isDeviceManagementOpen, setIsDeviceManagementOpen] = useState(false);
+  const [userId, setUserId] = useState<string>('');
 
   useEffect(() => {
     setIsClient(true);
@@ -67,10 +74,24 @@ export default function SettingsPage() {
     setSpeechAutoSubmitState(getSpeechAutoSubmit());
     setSpeechLanguageState(getSpeechLanguage());
     
-    // TOTPシークレットを取得
-    const secret = localStorage.getItem('totp_secret');
-    if (secret) {
-      setTotpSecret(secret);
+    // TOTPシークレットとユーザーIDを取得（強化版）
+    const googleProfile = GoogleAuthService.getCurrentProfile() || GoogleAuthService.restoreProfile();
+    if (googleProfile) {
+      const secret = EnhancedSecureStorage.getTOTPSecret(googleProfile);
+      if (secret) {
+        setTotpSecret(secret);
+      }
+    } else {
+      // Google認証がない場合のレガシーアクセス（非推奨）
+      const legacySecret = localStorage.getItem('totp_secret');
+      if (legacySecret) {
+        setTotpSecret(legacySecret);
+      }
+    }
+    
+    const userIdFromStorage = getTOTPUserId();
+    if (userIdFromStorage) {
+      setUserId(userIdFromStorage);
     }
     
     // 環境変数の設定確認
@@ -331,7 +352,7 @@ export default function SettingsPage() {
       message: "ログアウトしますか？再度アクセスするにはTOTP認証が必要になります。",
       confirmText: "ログアウト",
       onConfirm: () => {
-        signOut();
+        logoutTOTP();
         setConfirmDialog({ ...confirmDialog, isOpen: false });
         router.push('/auth');
       },
@@ -823,17 +844,44 @@ const firebaseConfig = {
         {/* Authentication Section */}
         <section className="bg-white rounded-lg shadow-sm border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-medium text-gray-900">認証</h2>
-            <p className="mt-1 text-sm text-gray-600">TOTP認証の管理</p>
+            <h2 className="text-lg font-medium text-gray-900">セキュリティ設定</h2>
+            <p className="mt-1 text-sm text-gray-600">TOTP認証とデバイス管理</p>
           </div>
-          <div className="p-6 space-y-4">
+          <div className="p-6 space-y-6">
+            {/* デバイス管理 */}
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center">
+                  <FiSmartphone className="h-5 w-5 text-blue-600 mr-3" />
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-900">登録済みデバイス管理</h3>
+                    <p className="text-xs text-gray-600 mt-1">
+                      セキュリティのため、不要なデバイスは定期的に削除してください
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsDeviceManagementOpen(true)}
+                  className="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  管理
+                </button>
+              </div>
+              <div className="bg-white/80 rounded-lg p-3 border border-blue-200">
+                <p className="text-xs text-blue-700">
+                  <strong>デバイス認証が有効です</strong><br />
+                  新しいデバイスからのアクセスにはデバイス登録が必要です。この機能により、TOTPシークレットが漏洩してもアクセスリスクを大幅に減らします。
+                </p>
+              </div>
+            </div>
+
             {/* シークレットキー表示 */}
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="text-sm font-medium text-gray-900 mb-2">
                 手動入力用シークレット
               </h3>
               <p className="text-xs text-gray-600 mb-3">
-                他のブラウザで「既存のTOTP認証で入力」を選択した際に使用してください
+                他のデバイスで「既存のTOTP認証で入力」を選択した際に使用してください
               </p>
               {isClient && totpSecret ? (
                 <div className="bg-white border rounded p-3">
@@ -912,6 +960,13 @@ const firebaseConfig = {
         confirmText={confirmDialog.confirmText}
         onConfirm={confirmDialog.onConfirm}
         onCancel={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+      />
+
+      {/* Device Management Modal */}
+      <DeviceManagement
+        userId={userId}
+        isOpen={isDeviceManagementOpen}
+        onClose={() => setIsDeviceManagementOpen(false)}
       />
     </div>
   );

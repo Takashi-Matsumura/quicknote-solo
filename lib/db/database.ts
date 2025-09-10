@@ -27,7 +27,11 @@ export async function createNote(noteData: Omit<Note, 'id' | 'createdAt' | 'upda
     return await ops.createNote(noteData);
   } catch (error: unknown) {
     // Firestoreエラーの場合はIndexedDBにフォールバック
-    if ((error as Error).message === 'FIRESTORE_DB_NOT_FOUND' || (error as Error).message.includes('timeout')) {
+    const errorMessage = (error as Error).message;
+    if (errorMessage.includes('Authentication required') || 
+        errorMessage.includes('FIRESTORE_DB_NOT_FOUND') || 
+        errorMessage.includes('timeout')) {
+      console.log('Firestore authentication failed, falling back to IndexedDB for note creation');
       return await indexedDbOps.createNote(noteData);
     }
     throw error;
@@ -36,12 +40,38 @@ export async function createNote(noteData: Omit<Note, 'id' | 'createdAt' | 'upda
 
 export async function updateNote(id: string, updates: Partial<Omit<Note, 'id' | 'createdAt' | 'updatedAt'>>): Promise<void> {
   const ops = getDbOperations();
-  await ops.updateNote(id, updates);
+  
+  try {
+    await ops.updateNote(id, updates);
+  } catch (error: unknown) {
+    const errorMessage = (error as Error).message;
+    if (errorMessage.includes('Authentication required') || 
+        errorMessage.includes('FIRESTORE_DB_NOT_FOUND') || 
+        errorMessage.includes('timeout')) {
+      console.log('Firestore authentication failed, falling back to IndexedDB for note update');
+      await indexedDbOps.updateNote(id, updates);
+    } else {
+      throw error;
+    }
+  }
 }
 
 export async function deleteNote(id: string): Promise<void> {
   const ops = getDbOperations();
-  await ops.deleteNote(id);
+  
+  try {
+    await ops.deleteNote(id);
+  } catch (error: unknown) {
+    const errorMessage = (error as Error).message;
+    if (errorMessage.includes('Authentication required') || 
+        errorMessage.includes('FIRESTORE_DB_NOT_FOUND') || 
+        errorMessage.includes('timeout')) {
+      console.log('Firestore authentication failed, falling back to IndexedDB for note deletion');
+      await indexedDbOps.deleteNote(id);
+    } else {
+      throw error;
+    }
+  }
 }
 
 export async function getNoteById(id: string): Promise<Note | null> {
@@ -56,12 +86,38 @@ export async function getAllNotes(): Promise<Note[]> {
 
 export async function searchNotes(filter: NoteFilter): Promise<Note[]> {
   const ops = getDbOperations();
-  return await ops.searchNotes(filter);
+  
+  try {
+    return await ops.searchNotes(filter);
+  } catch (error: unknown) {
+    // Firestoreエラーの場合はIndexedDBにフォールバック
+    const errorMessage = (error as Error).message;
+    if (errorMessage.includes('Authentication required') || 
+        errorMessage.includes('FIRESTORE_DB_NOT_FOUND') || 
+        errorMessage.includes('timeout')) {
+      console.log('Firestore authentication failed, falling back to IndexedDB');
+      return await indexedDbOps.searchNotes(filter);
+    }
+    throw error;
+  }
 }
 
 export async function getAllTags(): Promise<string[]> {
   const ops = getDbOperations();
-  return await ops.getAllTags();
+  
+  try {
+    return await ops.getAllTags();
+  } catch (error: unknown) {
+    // Firestoreエラーの場合はIndexedDBにフォールバック
+    const errorMessage = (error as Error).message;
+    if (errorMessage.includes('Authentication required') || 
+        errorMessage.includes('FIRESTORE_DB_NOT_FOUND') || 
+        errorMessage.includes('timeout')) {
+      console.log('Firestore authentication failed, falling back to IndexedDB for tags');
+      return await indexedDbOps.getAllTags();
+    }
+    throw error;
+  }
 }
 
 export async function clearAllNotes(): Promise<void> {

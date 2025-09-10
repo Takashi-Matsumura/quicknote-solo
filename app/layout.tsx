@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import PWAProvider from "@/components/PWAProvider";
+import Script from "next/script";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -43,6 +44,27 @@ export default function RootLayout({
       <head>
         <link rel="icon" href="/icon-192x192.png" />
         <link rel="apple-touch-icon" href="/icon-192x192.png" />
+        <script src="https://accounts.google.com/gsi/client" async defer></script>
+        {process.env.NODE_ENV === 'development' && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `
+                // 開発環境でのキャッシュバスター
+                if ('serviceWorker' in navigator) {
+                  navigator.serviceWorker.getRegistrations().then(registrations => {
+                    registrations.forEach(registration => registration.unregister());
+                  });
+                }
+                // CSSのリロードを強制
+                const links = document.querySelectorAll('link[rel="stylesheet"]');
+                links.forEach(link => {
+                  const href = link.href.split('?')[0];
+                  link.href = href + '?v=' + Date.now();
+                });
+              `
+            }}
+          />
+        )}
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
