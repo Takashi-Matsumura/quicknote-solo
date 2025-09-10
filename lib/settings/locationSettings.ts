@@ -1,17 +1,23 @@
-const LOCATION_SETTING_KEY = "quicknote-location-enabled";
+import { createSettingsManager } from '../utils/settingsManager';
+
+const locationSettingsManager = createSettingsManager<boolean>({
+  key: 'quicknote-location-enabled',
+  defaultValue: true,
+  validator: (value): value is boolean => typeof value === 'boolean'
+});
 
 export function getLocationSetting(): boolean {
-  if (typeof window === "undefined") return true; // SSR対応
-  
-  const saved = localStorage.getItem(LOCATION_SETTING_KEY);
-  return saved !== null ? JSON.parse(saved) : true; // デフォルトはON
+  return locationSettingsManager.get();
 }
 
 export function setLocationSetting(enabled: boolean): void {
-  if (typeof window === "undefined") return;
+  locationSettingsManager.set(enabled);
   
-  localStorage.setItem(LOCATION_SETTING_KEY, JSON.stringify(enabled));
-  
-  // カスタムイベントを発火して他のコンポーネントに変更を通知
-  window.dispatchEvent(new CustomEvent("locationSettingChanged"));
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('locationSettingChanged'));
+  }
+}
+
+export function subscribeToLocationSettings(callback: (enabled: boolean) => void): () => void {
+  return locationSettingsManager.subscribe(callback);
 }

@@ -52,18 +52,21 @@ export class SessionManager {
 
 import { TOTPService } from './totp';
 import { initializeTOTPAuth } from '@/lib/firebase/auth';
+import SecureStorage from '@/lib/utils/secureStorage';
 
+// レガシーキーとの互換性のため保持
 const TOTP_SECRET_KEY = 'totp_secret';
 const TOTP_USER_ID_KEY = 'totp_user_id';
 
 export const getTOTPSecret = (): string | null => {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem(TOTP_SECRET_KEY);
+  // マイグレーションを自動実行
+  SecureStorage.migrateFromPlaintext();
+  return SecureStorage.getTOTPSecret();
 };
 
 export const getTOTPUserId = (): string | null => {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem(TOTP_USER_ID_KEY);
+  SecureStorage.migrateFromPlaintext();
+  return SecureStorage.getTOTPUserId();
 };
 
 export const loginWithTOTP = async (secret: string): Promise<boolean> => {
@@ -76,15 +79,15 @@ export const loginWithTOTP = async (secret: string): Promise<boolean> => {
     // ユーザーIDを生成
     const userId = TOTPService.generateUserIdFromSecret(secret);
     
-    // セッションに保存
-    localStorage.setItem(TOTP_SECRET_KEY, secret);
-    localStorage.setItem(TOTP_USER_ID_KEY, userId);
+    // 暗号化してセッションに保存
+    SecureStorage.setTOTPSecret(secret);
+    SecureStorage.setTOTPUserId(userId);
     
     // TOTP専用のFirebase認証を実行
     await initializeTOTPAuth(userId);
     
     return true;
-  } catch (error) {
+  } catch (_error) {
     return false;
   }
 };
@@ -98,9 +101,14 @@ export const logoutTOTP = () => {
 };
 
 export const resetTOTPAuth = () => {
-  if (typeof window === 'undefined') return;
-  // TOTP認証を完全にリセット（シークレットキーも削除）
-  localStorage.removeItem(TOTP_SECRET_KEY);
-  localStorage.removeItem(TOTP_USER_ID_KEY);
+  // TOTP認証を完全にリセット（暗号化されたシークレットキーも削除）
+  SecureStorage.clearTOTPData();
+  
+  // レガシーデータも削除
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(TOTP_SECRET_KEY);
+    localStorage.removeItem(TOTP_USER_ID_KEY);
+  }
+  
   SessionManager.clearSession();
 };

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { TOTPService } from '@/lib/auth/totp';
 import { 
   HiDevicePhoneMobile, 
@@ -8,9 +8,6 @@ import {
   HiSparkles, 
   HiCheckCircle, 
   HiLockClosed, 
-  HiLightBulb,
-  HiPencilSquare,
-  HiShieldCheck
 } from 'react-icons/hi2';
 
 interface TOTPAuthProps {
@@ -337,7 +334,7 @@ export default function TOTPAuth({ onAuthSuccess, onCancel }: TOTPAuthProps) {
 
             <div className="flex space-x-4">
               <button
-                onClick={handleTokenVerify}
+                onClick={() => handleTokenVerify()}
                 disabled={token.length !== 6}
                 className="flex-1 py-5 px-8 bg-gradient-to-r from-emerald-600 via-green-600 to-emerald-700 hover:from-emerald-700 hover:via-green-700 hover:to-emerald-800 disabled:from-gray-600 disabled:to-gray-600 text-white font-bold rounded-2xl transition-all duration-300 transform hover:scale-105 hover:shadow-emerald-500/25 hover:shadow-2xl disabled:transform-none shadow-lg relative overflow-hidden group"
               >

@@ -28,11 +28,13 @@ export interface Note {
   location?: Location;
   pinned: boolean;
   attachments?: FileAttachment[]; // ファイル添付
+  timestamp: number; // 後方互換性のため
   createdAt: number;
   updatedAt: number;
 }
 
 export interface NoteFilter {
+  text?: string; // 後方互換性のため
   searchText?: string;
   tags?: string[];
   period?: "today" | "7d" | "30d" | "all";

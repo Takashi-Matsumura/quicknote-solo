@@ -22,7 +22,7 @@ export default function AuthPage() {
     }
   }, []);
 
-  const handleAuthSuccess = async (secret: string, userId: string) => {
+  const handleAuthSuccess = async (secret: string, _userId: string) => {
     try {
       // 新しいTOTP認証システムでログイン
       const success = await loginWithTOTP(secret);
@@ -32,7 +32,7 @@ export default function AuthPage() {
       } else {
         // 認証失敗はサイレントに処理（TOTPAuthコンポーネントがエラー表示）
       }
-    } catch (error) {
+    } catch (_error) {
       // エラーはサイレントに処理
     }
   };

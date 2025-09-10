@@ -13,7 +13,7 @@ import { isFirebaseStorageAvailable } from "@/lib/firebase/config";
 import type { FileAttachment } from "@/lib/models/note";
 
 interface NoteInputBarProps {
-  onSubmit: (text: string, includeLocation: boolean) => void;
+  onSubmit: (text: string, attachments?: FileAttachment[]) => Promise<boolean>;
   onFileDropped?: (file: FileAttachment, text: string) => void;
   isSubmitting?: boolean;
   placeholder?: string;
@@ -37,6 +37,7 @@ export default function NoteInputBar({
   const [isDragOver, setIsDragOver] = useState(false);
   const [buttonMode, setButtonMode] = useState<'mic' | 'file'>('mic');
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [attachments, setAttachments] = useState<FileAttachment[]>([]);
   const isMobile = useIsMobile();
   
   // クライアントサイドでのみ画面幅を取得
@@ -91,15 +92,17 @@ export default function NoteInputBar({
     };
   }, []);
 
-  const handleSubmit = useCallback((e?: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (text.trim() && !isSubmitting) {
-      const includeLocation = getLocationSetting();
-      onSubmit(text.trim(), includeLocation);
-      setText("");
-      setInterimText("");
+      const success = await onSubmit(text.trim(), attachments);
+      if (success) {
+        setText("");
+        setInterimText("");
+        setAttachments([]);
+      }
     }
-  }, [text, isSubmitting, onSubmit]);
+  }, [text, isSubmitting, onSubmit, attachments]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && e.shiftKey) {
@@ -116,12 +119,14 @@ export default function NoteInputBar({
       
       // スマホの場合は自動登録
       if (shouldShowMobileUI && finalText) {
-        setTimeout(() => {
+        setTimeout(async () => {
           if (!isSubmitting) {
-            const includeLocation = getLocationSetting();
-            onSubmit(finalText, includeLocation);
-            setText("");
-            setIsListening(false);
+            const success = await onSubmit(finalText, attachments);
+            if (success) {
+              setText("");
+              setAttachments([]);
+              setIsListening(false);
+            }
           }
         }, 500);
       }
@@ -135,7 +140,7 @@ export default function NoteInputBar({
     } else {
       setInterimText(result.transcript);
     }
-  }, [text, isSubmitting, onSubmit, shouldShowMobileUI, isVoiceMode]);
+  }, [text, isSubmitting, onSubmit, shouldShowMobileUI, isVoiceMode, attachments]);
 
   const handleMicClick = useCallback(async () => {
     if (!speechService.isSupported()) {

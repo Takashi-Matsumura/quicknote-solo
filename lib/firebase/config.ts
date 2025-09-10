@@ -30,11 +30,7 @@ export function initializeFirebase(config: FirebaseConfig) {
         ignoreUndefinedProperties: true,
         // ローカルキャッシュを完全無効化（メモデータの同期問題を解決）
         localCache: {
-          kind: 'memory',
-          // メモリキャッシュも最小化
-          garageCollector: {
-            maxCacheSizeBytes: 1, // 最小キャッシュサイズ
-          }
+          kind: 'memory'
         }
       });
       // Firestore初期化成功

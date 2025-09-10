@@ -1,7 +1,5 @@
 import type { FirebaseConfig } from '../firebase/config';
-
-const FIREBASE_SETTINGS_KEY = 'firebase-settings';
-const STORAGE_TYPE_KEY = 'storage-type';
+import { createSettingsManager } from '../utils/settingsManager';
 
 export type StorageType = 'local' | 'firebase';
 
@@ -10,80 +8,73 @@ export interface FirebaseSettings {
   config: FirebaseConfig | null;
 }
 
-export function getFirebaseSettings(): FirebaseSettings {
-  if (typeof window === 'undefined') {
-    return { enabled: false, config: null };
+const firebaseSettingsManager = createSettingsManager<FirebaseSettings>({
+  key: 'firebase-settings',
+  defaultValue: { enabled: false, config: null },
+  validator: (value): value is FirebaseSettings => {
+    if (typeof value !== 'object' || value === null) return false;
+    const obj = value as Record<string, unknown>;
+    return typeof obj.enabled === 'boolean' &&
+           (obj.config === null || typeof obj.config === 'object');
   }
+});
 
+const storageTypeManager = createSettingsManager<StorageType>({
+  key: 'storage-type',
+  defaultValue: 'local',
+  validator: (value): value is StorageType => 
+    value === 'local' || value === 'firebase'
+});
+
+export function getFirebaseSettings(): FirebaseSettings {
   // 環境変数からの設定を優先
   const envConfig = getFirebaseConfigFromEnv();
   if (envConfig) {
     return { enabled: true, config: envConfig };
   }
 
-  try {
-    const settings = localStorage.getItem(FIREBASE_SETTINGS_KEY);
-    if (!settings) {
-      return { enabled: false, config: null };
-    }
-    
-    return JSON.parse(settings);
-  } catch (error) {
-    console.error('Failed to load Firebase settings:', error);
-    return { enabled: false, config: null };
-  }
+  return firebaseSettingsManager.get();
 }
 
 export function setFirebaseSettings(settings: FirebaseSettings): void {
-  if (typeof window === 'undefined') return;
-
-  try {
-    localStorage.setItem(FIREBASE_SETTINGS_KEY, JSON.stringify(settings));
-    
-    // カスタムイベントを発火して設定変更を通知
+  firebaseSettingsManager.set(settings);
+  
+  // カスタムイベントを発火して設定変更を通知
+  if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event('firebaseSettingChanged'));
-  } catch (error) {
-    console.error('Failed to save Firebase settings:', error);
   }
 }
 
 export function getStorageType(): StorageType {
-  if (typeof window === 'undefined') return 'local';
-
-  try {
-    const type = localStorage.getItem(STORAGE_TYPE_KEY);
-    return (type as StorageType) || 'local';
-  } catch (error) {
-    console.error('Failed to load storage type:', error);
-    return 'local';
-  }
+  return storageTypeManager.get();
 }
 
 export function setStorageType(type: StorageType): void {
-  if (typeof window === 'undefined') return;
-
-  try {
-    localStorage.setItem(STORAGE_TYPE_KEY, type);
-    
-    // カスタムイベントを発火して設定変更を通知
+  storageTypeManager.set(type);
+  
+  // カスタムイベントを発火して設定変更を通知
+  if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event('storageTypeChanged'));
-  } catch (error) {
-    console.error('Failed to save storage type:', error);
   }
 }
 
 export function clearFirebaseSettings(): void {
-  if (typeof window === 'undefined') return;
-
-  try {
-    localStorage.removeItem(FIREBASE_SETTINGS_KEY);
-    localStorage.removeItem(STORAGE_TYPE_KEY);
-    
+  firebaseSettingsManager.clear();
+  storageTypeManager.clear();
+  
+  if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event('firebaseSettingChanged'));
     window.dispatchEvent(new Event('storageTypeChanged'));
-  } catch (error) {
-    console.error('Failed to clear Firebase settings:', error);
   }
+}
+
+// 設定変更の購読
+export function subscribeToFirebaseSettings(callback: (settings: FirebaseSettings) => void): () => void {
+  return firebaseSettingsManager.subscribe(callback);
+}
+
+export function subscribeToStorageTypeChanges(callback: (type: StorageType) => void): () => void {
+  return storageTypeManager.subscribe(callback);
 }
 
 // 環境変数からFirebase設定を読み込む

@@ -1,53 +1,75 @@
-const SPEECH_ENABLED_KEY = "quicknote-speech-enabled";
-const SPEECH_AUTO_SUBMIT_KEY = "quicknote-speech-auto-submit";
-const SPEECH_LANGUAGE_KEY = "quicknote-speech-language";
+import { createSettingsManager } from '../utils/settingsManager';
+
+export interface SpeechSettings {
+  enabled: boolean;
+  autoSubmit: boolean;
+  language: string;
+}
+
+const speechSettingsManager = createSettingsManager<SpeechSettings>({
+  key: 'quicknote-speech-settings',
+  defaultValue: {
+    enabled: true,
+    autoSubmit: false,
+    language: 'ja-JP'
+  },
+  validator: (value): value is SpeechSettings => {
+    if (typeof value !== 'object' || value === null) return false;
+    const obj = value as Record<string, unknown>;
+    return typeof obj.enabled === 'boolean' &&
+           typeof obj.autoSubmit === 'boolean' &&
+           typeof obj.language === 'string';
+  }
+});
+
+export function getSpeechSettings(): SpeechSettings {
+  return speechSettingsManager.get();
+}
 
 export function getSpeechEnabled(): boolean {
-  if (typeof window === "undefined") return true; // SSR対応
-  
-  const saved = localStorage.getItem(SPEECH_ENABLED_KEY);
-  return saved !== null ? JSON.parse(saved) : true; // デフォルトはON
+  return speechSettingsManager.get().enabled;
 }
 
 export function setSpeechEnabled(enabled: boolean): void {
-  if (typeof window === "undefined") return;
-  
-  localStorage.setItem(SPEECH_ENABLED_KEY, JSON.stringify(enabled));
-  
-  // カスタムイベントを発火して他のコンポーネントに変更を通知
-  window.dispatchEvent(new CustomEvent("speechSettingChanged"));
+  const current = speechSettingsManager.get();
+  speechSettingsManager.set({ ...current, enabled });
+  notifySpeechSettingChanged();
 }
 
 export function getSpeechAutoSubmit(): boolean {
-  if (typeof window === "undefined") return false; // SSR対応
-  
-  const saved = localStorage.getItem(SPEECH_AUTO_SUBMIT_KEY);
-  return saved !== null ? JSON.parse(saved) : false; // デフォルトはOFF
+  return speechSettingsManager.get().autoSubmit;
 }
 
-export function setSpeechAutoSubmit(enabled: boolean): void {
-  if (typeof window === "undefined") return;
-  
-  localStorage.setItem(SPEECH_AUTO_SUBMIT_KEY, JSON.stringify(enabled));
-  
-  // カスタムイベントを発火して他のコンポーネントに変更を通知
-  window.dispatchEvent(new CustomEvent("speechSettingChanged"));
+export function setSpeechAutoSubmit(autoSubmit: boolean): void {
+  const current = speechSettingsManager.get();
+  speechSettingsManager.set({ ...current, autoSubmit });
+  notifySpeechSettingChanged();
 }
 
 export function getSpeechLanguage(): string {
-  if (typeof window === "undefined") return "ja-JP"; // SSR対応
-  
-  const saved = localStorage.getItem(SPEECH_LANGUAGE_KEY);
-  return saved || "ja-JP"; // デフォルトは日本語
+  return speechSettingsManager.get().language;
 }
 
 export function setSpeechLanguage(language: string): void {
-  if (typeof window === "undefined") return;
-  
-  localStorage.setItem(SPEECH_LANGUAGE_KEY, language);
-  
-  // カスタムイベントを発火して他のコンポーネントに変更を通知
-  window.dispatchEvent(new CustomEvent("speechSettingChanged"));
+  const current = speechSettingsManager.get();
+  speechSettingsManager.set({ ...current, language });
+  notifySpeechSettingChanged();
+}
+
+export function setSpeechSettings(settings: Partial<SpeechSettings>): void {
+  const current = speechSettingsManager.get();
+  speechSettingsManager.set({ ...current, ...settings });
+  notifySpeechSettingChanged();
+}
+
+export function subscribeToSpeechSettings(callback: (settings: SpeechSettings) => void): () => void {
+  return speechSettingsManager.subscribe(callback);
+}
+
+function notifySpeechSettingChanged(): void {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('speechSettingChanged'));
+  }
 }
 
 export const SUPPORTED_LANGUAGES = [
