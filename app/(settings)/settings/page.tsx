@@ -114,7 +114,7 @@ export default function SettingsPage() {
     confirmText: "",
     onConfirm: () => {},
   });
-  const [userId, setUserId] = useState<string>('');
+  const [_userId, setUserId] = useState<string>('');
 
   useEffect(() => {
     setIsClient(true);
@@ -435,7 +435,7 @@ export default function SettingsPage() {
               ].map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
+                  onClick={() => setActiveTab(tab.id as 'speech' | 'cloud' | 'auth' | 'danger')}
                   className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                     activeTab === tab.id
                       ? 'border-blue-500 text-blue-600'
