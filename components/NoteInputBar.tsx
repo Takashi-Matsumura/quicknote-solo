@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { FiSend, FiMapPin, FiMic, FiMicOff, FiPlus } from "react-icons/fi";
-import { getLocationSetting } from "@/lib/settings/locationSettings";
+import { getLocationSetting, setLocationSetting } from "@/lib/settings/locationSettings";
 import { getSpeechEnabled } from "@/lib/settings/speechSettings";
 import { getStorageType } from "@/lib/settings/firebaseSettings";
 import { getSpeechRecognitionService, SpeechRecognitionResult } from "@/lib/speech/speechRecognition";
@@ -444,16 +444,26 @@ export default function NoteInputBar({
           </div>
           
           {/* 位置情報表示 */}
-          <div className="flex items-center space-x-2 px-4 py-2 bg-gray-50 rounded-full">
+          <button
+            onClick={() => {
+              const newState = !locationEnabled;
+              setLocationSetting(newState);
+              setLocationEnabled(newState);
+            }}
+            className="flex items-center space-x-2 px-4 py-2 bg-gray-50 rounded-full hover:bg-gray-100 transition-colors active:bg-gray-200"
+            title={locationEnabled ? "位置情報をOFFにする" : "位置情報をONにする"}
+          >
             <FiMapPin
-              className={`h-4 w-4 transition-colors ${
-                locationEnabled ? "text-blue-800" : "text-gray-400"
+              className={`h-4 w-4 transition-all duration-200 ${
+                locationEnabled ? "text-blue-800 drop-shadow-sm" : "text-gray-400 opacity-50"
               }`}
             />
-            <span className="text-sm text-gray-600">
+            <span className={`text-sm transition-colors ${
+              locationEnabled ? "text-gray-700 font-medium" : "text-gray-500"
+            }`}>
               {locationEnabled ? "位置情報を含めて保存" : "位置情報なしで保存"}
             </span>
-          </div>
+          </button>
         </div>
       </div>
     );
@@ -557,19 +567,22 @@ export default function NoteInputBar({
     <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 pb-12 safe-area-bottom z-50">
       <form onSubmit={handleSubmit} className="flex items-start space-x-3">
         <div className="flex items-start px-6 pb-3 space-x-3 w-full">
-          <div
-            className="flex-shrink-0 flex items-start justify-center transition-colors"
-            title={
-              locationEnabled ? "位置情報記録：有効" : "位置情報記録：無効"
-            }
+          <button
+            onClick={() => {
+              const newState = !locationEnabled;
+              setLocationSetting(newState);
+              setLocationEnabled(newState);
+            }}
+            className="flex-shrink-0 flex items-start justify-center transition-colors hover:bg-gray-100 rounded-md p-1"
+            title={locationEnabled ? "位置情報をOFFにする（現在：ON）" : "位置情報をONにする（現在：OFF）"}
             style={{ width: "28px", paddingTop: "8px" }}
           >
             <FiMapPin
-              className={`h-7 w-7 transition-colors ${
-                locationEnabled ? "text-blue-800" : "text-gray-400"
+              className={`h-7 w-7 transition-all duration-200 ${
+                locationEnabled ? "text-blue-800 drop-shadow-sm" : "text-gray-400 opacity-50"
               }`}
             />
-          </div>
+          </button>
           
           <div className="flex-1 flex flex-col">
             <div 

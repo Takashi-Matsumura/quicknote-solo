@@ -48,29 +48,28 @@ class EnhancedSecureStorage {
 
   /**
    * 強化された暗号化キー導出
-   * Google UID + デバイス特性 + アクセストークンの組み合わせ
+   * Google UID + デバイス特性の組み合わせ（安定版）
    */
   private static deriveEnhancedKey(googleProfile?: GoogleAuthProfile): string {
     if (!googleProfile) {
       throw new Error('Google authentication required for enhanced encryption');
     }
 
-    // Google固有の秘密情報
+    // Google固有の秘密情報（安定版 - アクセストークンを除外）
     const googleSecrets = [
       googleProfile.id,           // Google UID (推測不可能)
       googleProfile.email,        // メールアドレス
-      GoogleAuthService.getAccessToken() || '', // アクセストークン
     ].join('|');
 
     // デバイス特性（従来より強化）
     const deviceFingerprint = this.getEnhancedDeviceFingerprint();
     
-    // 時間ベースの要素（セッション固有性）
-    const sessionElement = this.getSessionElement();
+    // 安定したセッション識別子（時間に依存しない）
+    const stableSessionElement = this.getStableSessionElement();
 
     // 複合パスフレーズの生成
     const complexPassphrase = CryptoJS.SHA512(
-      googleSecrets + '|' + deviceFingerprint + '|' + sessionElement
+      googleSecrets + '|' + deviceFingerprint + '|' + stableSessionElement
     ).toString();
 
     const salt = this.getSalt();
@@ -231,29 +230,29 @@ class EnhancedSecureStorage {
   }
 
   /**
-   * セッション要素の生成
+   * 安定したセッション要素の生成（時間に依存しない）
    */
-  private static getSessionElement(): string {
+  private static getStableSessionElement(): string {
     if (typeof window === 'undefined') return 'server-session';
 
-    // より強力なセッション識別子
-    let sessionId = sessionStorage.getItem('enhanced_session_id');
+    // より強力で安定したセッション識別子（localStorage使用）
+    let sessionId = localStorage.getItem('enhanced_stable_session_id');
     if (!sessionId) {
       // Web Crypto APIを使用した真の乱数
       if (window.crypto && window.crypto.getRandomValues) {
-        const array = new Uint8Array(16);
+        const array = new Uint8Array(32); // 256bit
         window.crypto.getRandomValues(array);
         sessionId = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
       } else {
-        sessionId = CryptoJS.lib.WordArray.random(16).toString();
+        sessionId = CryptoJS.lib.WordArray.random(32).toString();
       }
       
-      sessionStorage.setItem('enhanced_session_id', sessionId);
+      localStorage.setItem('enhanced_stable_session_id', sessionId);
+      Logger.log('Stable session element generated');
     }
 
-    // タイムスタンプとの組み合わせ
-    const timestamp = Math.floor(Date.now() / (1000 * 60 * 10)); // 10分単位
-    return CryptoJS.SHA256(sessionId + '|' + timestamp).toString();
+    // 時間に依存しない安定したハッシュ
+    return CryptoJS.SHA256(sessionId + '|stable').toString();
   }
 
   /**
@@ -382,9 +381,32 @@ class EnhancedSecureStorage {
     localStorage.removeItem(this.USER_ID_KEY);
     localStorage.removeItem(this.GOOGLE_PROFILE_KEY);
     localStorage.removeItem(this.SALT_KEY);
+    localStorage.removeItem('enhanced_stable_session_id');
     sessionStorage.removeItem('enhanced_session_id');
     
     Logger.log('Enhanced encrypted data completely cleared');
+  }
+
+  /**
+   * 暗号化キー変更時の古いデータクリア
+   */
+  static clearCorruptedData(): void {
+    if (typeof window === 'undefined') return;
+    
+    Logger.log('Clearing corrupted encrypted data due to key changes');
+    
+    // 復号化できない古いデータを削除
+    localStorage.removeItem(this.SECRET_KEY);
+    localStorage.removeItem(this.USER_ID_KEY);
+    localStorage.removeItem(this.GOOGLE_PROFILE_KEY);
+    
+    // レガシーデータも削除
+    localStorage.removeItem('totp_secret_encrypted');
+    localStorage.removeItem('totp_user_id_encrypted');
+    localStorage.removeItem('totp_secret');
+    localStorage.removeItem('totp_user_id');
+    
+    Logger.log('Old encrypted data cleared - re-registration required');
   }
 
   /**

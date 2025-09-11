@@ -21,7 +21,7 @@ const firebaseSettingsManager = createSettingsManager<FirebaseSettings>({
 
 const storageTypeManager = createSettingsManager<StorageType>({
   key: 'storage-type',
-  defaultValue: 'local',
+  defaultValue: 'firebase',
   validator: (value): value is StorageType => 
     value === 'local' || value === 'firebase'
 });

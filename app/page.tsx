@@ -1,7 +1,10 @@
 "use client";
 
-import { FiSettings, FiInfo, FiEdit, FiRefreshCw } from "react-icons/fi";
+import { FiSettings, FiInfo, FiEdit, FiRefreshCw, FiLogOut } from "react-icons/fi";
 import Link from "next/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { logoutTOTP } from "@/lib/auth/session";
 
 import type { FileAttachment } from "@/lib/models/note";
 import { useAuthFlow } from "@/hooks/useAuthFlow";
@@ -19,6 +22,8 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 
 export default function HomePage() {
   const { isAuthenticated } = useAuthFlow();
+  const router = useRouter();
+  const [showAppInfoModal, setShowAppInfoModal] = useState(false);
   const {
     notes,
     allTags,
@@ -111,6 +116,21 @@ export default function HomePage() {
     );
   };
 
+  const handleLogout = () => {
+    showConfirmDialog(
+      "ログアウト",
+      "ログアウトしますか？再度アクセスするにはTOTP認証が必要になります。",
+      () => {
+        logoutTOTP();
+        router.push('/auth');
+      }
+    );
+  };
+
+  const handleInfoClick = () => {
+    setShowAppInfoModal(true);
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
@@ -149,13 +169,20 @@ export default function HomePage() {
               >
                 <FiSettings className="h-5 w-5" />
               </Link>
-              <Link
-                href="/about"
+              <button
+                onClick={handleInfoClick}
                 className="p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                 title="アプリ情報"
               >
                 <FiInfo className="h-5 w-5" />
-              </Link>
+              </button>
+              <button
+                onClick={handleLogout}
+                className="p-2 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                title="ログアウト"
+              >
+                <FiLogOut className="h-5 w-5" />
+              </button>
             </div>
           </div>
         </div>
@@ -222,6 +249,44 @@ export default function HomePage() {
         onConfirm={handleConfirm}
         onCancel={closeConfirmDialog}
       />
+      
+      {/* App Info Modal */}
+      {showAppInfoModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl max-w-md w-full">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">アプリ情報</h2>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="text-sm text-gray-600 dark:text-gray-300 space-y-2">
+                <p className="font-medium">QuickNote Solo v3.0.0</p>
+                <p>個人用メモPWA</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  データはローカル（IndexedDB）またはクラウド（Firebase）に保存されます
+                </p>
+              </div>
+              <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg">
+                <h3 className="text-sm font-medium text-blue-900 dark:text-blue-300 mb-2">主な機能</h3>
+                <ul className="text-xs text-blue-800 dark:text-blue-300 space-y-1">
+                  <li>• 音声入力によるクイックメモ作成</li>
+                  <li>• タグ管理とフィルタリング</li>
+                  <li>• 位置情報付きメモ</li>
+                  <li>• Firebase クラウド同期</li>
+                  <li>• TOTP 2段階認証</li>
+                </ul>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+              <button
+                onClick={() => setShowAppInfoModal(false)}
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
