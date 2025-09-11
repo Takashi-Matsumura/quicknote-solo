@@ -25,7 +25,7 @@ interface EnhancedAuthProps {
   onCancel?: () => void;
 }
 
-type AuthMode = 'google_signin' | 'totp_setup' | 'totp_verify' | 'device_registration' | 'migration';
+type AuthMode = 'google_signin' | 'device_choice' | 'secret_input' | 'totp_setup' | 'totp_verify' | 'device_registration' | 'migration';
 
 export default function EnhancedAuth({ onAuthSuccess, onCancel }: EnhancedAuthProps) {
   const [mode, setMode] = useState<AuthMode>('google_signin');
@@ -33,7 +33,7 @@ export default function EnhancedAuth({ onAuthSuccess, onCancel }: EnhancedAuthPr
   const [secret, setSecret] = useState<string>('');
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const [token, setToken] = useState<string>('');
-  const [_secretInput, _setSecretInput] = useState<string>('');
+  const [secretInput, setSecretInput] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [deviceRegistrationInfo, setDeviceRegistrationInfo] = useState<{ deviceName?: string }>({});
@@ -86,27 +86,9 @@ export default function EnhancedAuth({ onAuthSuccess, onCancel }: EnhancedAuthPr
           setMode('totp_verify');
         }
       } else {
-        // 新規設定が必要
-        Logger.log('No existing settings, switching to TOTP setup mode');
-        // 即座に画面遷移
-        setMode('totp_setup');
-        setIsLoading(false);
-        
-        // QRコード生成を直接実行（profileパラメータを使用）
-        setTimeout(async () => {
-          try {
-            Logger.log('Generating TOTP secret for new user', { email: profile.email });
-            const totpSecret = TOTPService.generateSecret(profile.name || 'QuickNote User');
-            setSecret(totpSecret.base32);
-            
-            const qrCode = await TOTPService.generateQRCode(totpSecret);
-            setQrCodeUrl(qrCode);
-            Logger.log('TOTP secret generated successfully', { secretLength: totpSecret.base32.length });
-          } catch (error) {
-            Logger.error('QR code generation failed', error);
-            setError('QRコードの生成に失敗しました');
-          }
-        }, 100);
+        // 新規設定が必要 - デバイス選択画面に移行
+        Logger.log('No existing settings, switching to device choice mode');
+        setMode('device_choice');
       }
     } catch (error) {
       Logger.error('Google sign-in handling failed', error);
@@ -370,8 +352,40 @@ export default function EnhancedAuth({ onAuthSuccess, onCancel }: EnhancedAuthPr
     }
   };
 
-  const _handleExistingSecretSubmit = () => {
-    // 現在の実装では使用していないが、将来の拡張用に保持
+  const handleExistingSecretSubmit = async () => {
+    if (!secretInput) {
+      setError('シークレットキーを入力してください');
+      return;
+    }
+    
+    if (!googleProfile) {
+      setError('Google認証が必要です。まずGoogleアカウントでサインインしてください。');
+      setMode('google_signin');
+      return;
+    }
+
+    try {
+      setSecret(secretInput);
+      
+      // 既存シークレットでTOTP設定を確認
+      const userId = TOTPService.generateUserIdFromSecret(secretInput);
+      
+      // シークレットをセキュアストレージに保存
+      EnhancedSecureStorage.setTOTPSecret(secretInput, googleProfile);
+      EnhancedSecureStorage.setTOTPUserId(userId, googleProfile);
+      
+      Logger.log('Existing secret configured successfully', { 
+        userId, 
+        secretLength: secretInput.length 
+      });
+      
+      // TOTP認証画面に移行
+      setMode('totp_verify');
+      setError('');
+    } catch (error) {
+      Logger.error('Failed to configure existing secret', error);
+      setError('シークレットキーの設定に失敗しました');
+    }
   };
 
   const handleGoogleSignOut = () => {
@@ -422,6 +436,8 @@ export default function EnhancedAuth({ onAuthSuccess, onCancel }: EnhancedAuthPr
         <h2 className="text-2xl font-bold text-center mb-8 text-white">
           {mode === 'google_signin' ? '強化認証ログイン' :
            mode === 'totp_setup' ? 'TOTP認証設定' :
+           mode === 'device_choice' ? 'デバイス設定選択' :
+           mode === 'secret_input' ? 'シークレット入力' :
            mode === 'totp_verify' ? 'TOTP認証' :
            mode === 'device_registration' ? 'デバイス登録' :
            mode === 'migration' ? 'セキュリティ移行' : '認証'}
@@ -448,6 +464,195 @@ export default function EnhancedAuth({ onAuthSuccess, onCancel }: EnhancedAuthPr
                 2. TOTP二要素認証<br />
                 データは全てGoogle UIDで暗号化されます
               </p>
+            </div>
+          </div>
+        )}
+
+        {/* デバイス選択画面 */}
+        {mode === 'device_choice' && (
+          <div className="space-y-6">
+            {!googleProfile ? (
+              <div className="bg-red-500/20 border border-red-500/30 rounded-xl p-6">
+                <div className="text-center">
+                  <HiExclamationTriangle className="w-8 h-8 text-red-400 mx-auto mb-4" />
+                  <h3 className="text-red-300 font-bold text-lg mb-2">Google認証が必要です</h3>
+                  <p className="text-red-200 text-sm mb-4">
+                    デバイス設定にはGoogleアカウントでのサインインが必要です。
+                  </p>
+                  <button
+                    onClick={() => setMode('google_signin')}
+                    className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
+                  >
+                    Googleサインインに戻る
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-green-500/20 border border-green-500/30 rounded-xl p-4 mb-6">
+                <div className="flex items-center gap-3">
+                  <HiCheckCircle className="w-5 h-5 text-green-400" />
+                  <p className="text-green-300 text-sm">
+                    <strong>{googleProfile.name}</strong> としてサインイン済み
+                  </p>
+                </div>
+              </div>
+            )}
+            
+            <div className="bg-blue-500/20 border border-blue-500/30 rounded-2xl p-6">
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <HiDevicePhoneMobile className="w-8 h-8 text-blue-400" />
+                <h3 className="text-xl font-bold text-blue-300">デバイス設定を選択</h3>
+              </div>
+              <p className="text-blue-200 text-sm leading-relaxed text-center mb-6">
+                新しいデバイスの設定方法を選択してください
+              </p>
+              
+              <div className="space-y-3">
+                <button
+                  onClick={() => {
+                    if (!googleProfile) {
+                      setError('TOTP設定にはGoogle認証が必要です。まずGoogleアカウントでサインインしてください。');
+                      setMode('google_signin');
+                      return;
+                    }
+                    setMode('totp_setup');
+                    generateNewSecret();
+                  }}
+                  className="w-full p-4 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-semibold rounded-xl transition-all duration-200 transform hover:scale-105 flex items-center justify-center gap-3"
+                >
+                  <HiKey className="w-6 h-6" />
+                  <div className="text-left">
+                    <div className="font-bold">新しいTOTP設定を作成</div>
+                    <div className="text-sm opacity-90">QRコードで認証アプリに登録</div>
+                  </div>
+                </button>
+                
+                <button
+                  onClick={() => {
+                    if (!googleProfile) {
+                      setError('シークレット入力にはGoogle認証が必要です。まずGoogleアカウントでサインインしてください。');
+                      setMode('google_signin');
+                      return;
+                    }
+                    setMode('secret_input');
+                    setSecret('');
+                    setSecretInput('');
+                    setError('');
+                  }}
+                  className="w-full p-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-xl transition-all duration-200 transform hover:scale-105 flex items-center justify-center gap-3"
+                >
+                  <HiShieldCheck className="w-6 h-6" />
+                  <div className="text-left">
+                    <div className="font-bold">既存のシークレットキーを入力</div>
+                    <div className="text-sm opacity-90">他のデバイスからシークレットを共有</div>
+                  </div>
+                </button>
+              </div>
+            </div>
+            
+            {onCancel && (
+              <div className="text-center mt-6">
+                <button
+                  onClick={onCancel}
+                  className="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/30 text-white rounded-xl font-semibold transition-all duration-300 backdrop-blur-sm"
+                >
+                  キャンセル
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* シークレット入力画面 */}
+        {mode === 'secret_input' && (
+          <div className="space-y-6">
+            {!googleProfile ? (
+              <div className="bg-red-500/20 border border-red-500/30 rounded-xl p-6">
+                <div className="text-center">
+                  <HiExclamationTriangle className="w-8 h-8 text-red-400 mx-auto mb-4" />
+                  <h3 className="text-red-300 font-bold text-lg mb-2">Google認証が必要です</h3>
+                  <p className="text-red-200 text-sm mb-4">
+                    シークレット入力にはGoogleアカウントでのサインインが必要です。
+                  </p>
+                  <button
+                    onClick={() => setMode('google_signin')}
+                    className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
+                  >
+                    Googleサインインに戻る
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-green-500/20 border border-green-500/30 rounded-xl p-4 mb-6">
+                <div className="flex items-center gap-3">
+                  <HiCheckCircle className="w-5 h-5 text-green-400" />
+                  <p className="text-green-300 text-sm">
+                    <strong>{googleProfile.name}</strong> としてサインイン済み
+                  </p>
+                </div>
+              </div>
+            )}
+            
+            <div className="bg-amber-500/20 border border-amber-500/30 rounded-2xl p-6">
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <HiKey className="w-8 h-8 text-amber-400" />
+                <h3 className="text-xl font-bold text-amber-300">既存のシークレットキー入力</h3>
+              </div>
+              <p className="text-amber-200 text-sm leading-relaxed text-center mb-6">
+                他のデバイスで使用しているTOTPシークレットキーを入力してください
+              </p>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-amber-200 text-sm font-medium mb-2">
+                    TOTPシークレットキー（Base32形式）
+                  </label>
+                  <textarea
+                    value={secretInput}
+                    onChange={(e) => {
+                      const value = e.target.value.toUpperCase().replace(/[^A-Z2-7]/g, '');
+                      setSecretInput(value);
+                      setError('');
+                    }}
+                    placeholder="例: JBSWY3DPEHPK3PXP..."
+                    className="w-full px-4 py-3 bg-black/20 border border-amber-500/30 rounded-xl text-white font-mono text-sm placeholder-white/30 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 resize-none"
+                    rows={3}
+                  />
+                  <p className="text-amber-200/70 text-xs mt-2">
+                    ※ スペースや記号は自動的に除去されます
+                  </p>
+                </div>
+                
+                <button
+                  onClick={handleExistingSecretSubmit}
+                  disabled={!secretInput || secretInput.length < 16}
+                  className="w-full py-3 px-4 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 disabled:from-gray-600 disabled:to-gray-600 text-white font-semibold rounded-xl transition-all duration-200 disabled:cursor-not-allowed"
+                >
+                  シークレットキーを設定して認証へ進む
+                </button>
+              </div>
+            </div>
+            
+            <div className="flex space-x-4">
+              <button
+                onClick={() => {
+                  setMode('device_choice');
+                  setSecretInput('');
+                  setError('');
+                }}
+                className="flex-1 py-3 px-4 bg-slate-600 hover:bg-slate-700 text-white font-semibold rounded-xl transition-all duration-200"
+              >
+                戻る
+              </button>
+              
+              {onCancel && (
+                <button
+                  onClick={onCancel}
+                  className="flex-1 py-3 px-4 bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/30 text-white rounded-xl font-semibold transition-all duration-300 backdrop-blur-sm"
+                >
+                  キャンセル
+                </button>
+              )}
             </div>
           </div>
         )}
