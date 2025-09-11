@@ -41,62 +41,90 @@ export default function EnhancedAuth({ onAuthSuccess, onCancel }: EnhancedAuthPr
   const isInitializingRef = useRef<boolean>(false);
 
   const handleGoogleSignIn = useCallback(async (profile: GoogleAuthProfile) => {
-    Logger.log('handleGoogleSignIn called', { profile });
+    Logger.log('🚀 handleGoogleSignIn called - START', { 
+      profile: { email: profile.email, name: profile.name, id: profile.id?.substring(0, 8) + '...' },
+      userAgent: navigator.userAgent,
+      isMobile: /Mobile|Android|iPhone|iPad/.test(navigator.userAgent),
+      currentMode: mode
+    });
+    
     setGoogleProfile(profile);
     setIsLoading(true);
     setError('');
 
     try {
-      Logger.log('Google authentication successful', { 
+      Logger.log('✅ Google authentication successful', { 
         email: profile.email, 
-        name: profile.name 
+        name: profile.name,
+        id: profile.id?.substring(0, 8) + '...'
       });
 
       // レガシーデータの移行チェック
+      Logger.log('🔄 Checking legacy data migration...');
       const needsMigration = EnhancedSecureStorage.migrateFromLegacyStorage(profile);
+      Logger.log('🔄 Migration check result', { needsMigration });
+      
       if (needsMigration) {
+        Logger.log('📱 Migration required - switching to migration mode');
         setMode('migration');
         setIsLoading(false);
         return;
       }
 
       // 既存のTOTP設定を確認（強化版ストレージを使用）
+      Logger.log('🔐 Checking existing TOTP settings...');
       const existingSecret = getTOTPSecret(profile);
       const existingUserId = getTOTPUserId(profile);
       
-      Logger.log('Checking existing TOTP settings', { 
+      Logger.log('🔐 TOTP settings check result', { 
         hasExistingSecret: !!existingSecret, 
-        hasExistingUserId: !!existingUserId 
+        hasExistingUserId: !!existingUserId,
+        secretLength: existingSecret?.length,
+        userIdLength: existingUserId?.length
       });
 
       if (existingSecret && existingUserId) {
         // 既存設定がある場合、セッション確認
+        Logger.log('🔍 Checking existing session validity...');
         const isValidSession = EnhancedSessionManager.isAuthenticated(profile);
-        Logger.log('Checking existing session', { isValidSession });
+        Logger.log('🔍 Session check result', { isValidSession });
         
         if (isValidSession) {
           // 有効なセッションがある場合、直接認証成功
-          Logger.log('Valid session found, calling onAuthSuccess');
+          Logger.log('✅ Valid session found - calling onAuthSuccess', {
+            secret: existingSecret?.substring(0, 8) + '...',
+            userId: existingUserId?.substring(0, 8) + '...',
+            email: profile.email
+          });
+          
+          // モバイルデバッグ用：onAuthSuccess呼び出し前後をログ
+          Logger.log('📱 MOBILE DEBUG: About to call onAuthSuccess');
           onAuthSuccess(existingSecret, existingUserId, profile);
+          Logger.log('📱 MOBILE DEBUG: onAuthSuccess called successfully');
           return;
         } else {
           // セッション期限切れの場合、TOTP認証
-          Logger.log('Session expired, switching to TOTP verify mode');
+          Logger.log('⏰ Session expired - switching to TOTP verify mode');
           setSecret(existingSecret);
           setMode('totp_verify');
         }
       } else {
         // 新規設定が必要 - デバイス選択画面に移行
-        Logger.log('No existing settings, switching to device choice mode');
+        Logger.log('🆕 No existing settings - switching to device choice mode');
         setMode('device_choice');
       }
     } catch (error) {
-      Logger.error('Google sign-in handling failed', error);
+      Logger.error('❌ Google sign-in handling failed', error, {
+        userAgent: navigator.userAgent,
+        isMobile: /Mobile|Android|iPhone|iPad/.test(navigator.userAgent),
+        profileEmail: profile?.email
+      });
       setError('Google認証の処理に失敗しました');
     } finally {
+      Logger.log('🏁 handleGoogleSignIn completed - setIsLoading(false)');
       setIsLoading(false);
     }
-  }, [onAuthSuccess]);
+  }, [onAuthSuccess, mode]);
 
   // Google認証の初期化
   useEffect(() => {

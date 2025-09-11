@@ -23,10 +23,24 @@ export default function AuthPage() {
   }, []);
 
   const handleAuthSuccess = async (_secret: string, _userId: string, _googleProfile: GoogleAuthProfile) => {
-    console.log('🎉 Auth success! Redirecting to main page...', { userId: _userId, email: _googleProfile.email });
+    console.log('🎉 AUTH PAGE: Auth success callback received!', { 
+      userId: _userId, 
+      email: _googleProfile.email,
+      userAgent: navigator.userAgent,
+      isMobile: /Mobile|Android|iPhone|iPad/.test(navigator.userAgent),
+      currentPath: window.location.pathname
+    });
+    
     // 強化認証システムで認証成功
     // EnhancedAuthコンポーネント内でセッション保存まで完了済み
-    router.replace('/');
+    
+    console.log('📱 AUTH PAGE: About to call router.replace("/")');
+    try {
+      router.replace('/');
+      console.log('✅ AUTH PAGE: router.replace("/") called successfully');
+    } catch (error) {
+      console.error('❌ AUTH PAGE: router.replace("/") failed', error);
+    }
   };
 
   if (!isClient) {
