@@ -18,6 +18,8 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import { GoogleAuthService } from '@/lib/auth/googleAuth';
 import EnhancedSecureStorage from '@/lib/utils/enhancedSecureStorage';
 import { getTOTPUserId } from '@/lib/auth/session';
+import { getCurrentTOTPUserId } from "@/lib/firebase/auth";
+import { SessionManager } from "@/lib/auth/session";
 
 interface ToastState {
   message: string;
@@ -88,6 +90,8 @@ export default function SettingsPage() {
   const [speechService] = useState(() => getSpeechRecognitionService());
   const [isClient, setIsClient] = useState(false);
   const [totpSecret, setTotpSecret] = useState<string>('');
+  const [totpUserId, setTotpUserId] = useState<string>('');
+  const [sessionUserId, setSessionUserId] = useState<string>('');
   const [storageType, setStorageTypeState] = useState<StorageType>("firebase");
   const [firebaseConfig, setFirebaseConfigState] = useState<FirebaseConfig>({
     apiKey: "",
@@ -144,6 +148,12 @@ export default function SettingsPage() {
         setTotpSecret(legacySecret);
       }
     }
+    
+    // ユーザーIDを取得
+    const totpUId = getCurrentTOTPUserId();
+    const sessionUId = SessionManager.getSession();
+    setTotpUserId(totpUId || '');
+    setSessionUserId(sessionUId || '');
     
     const userIdFromStorage = getTOTPUserId();
     if (userIdFromStorage) {
@@ -802,7 +812,60 @@ const firebaseConfig = {
 
           {/* Authentication Tab */}
           {activeTab === 'auth' && (
-            <div className="p-6">
+            <div className="p-6 space-y-6">
+              {/* TOTP User ID Display */}
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0">
+                    <FiSmartphone className="h-5 w-5 text-blue-600 mt-0.5" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-sm font-medium text-gray-900 mb-2">TOTPユーザーID（デバッグ情報）</h3>
+                    <p className="text-xs text-gray-600 mb-3">
+                      メモデータの識別に使用されるユーザーIDです。デバイス間で異なる場合はメモが同期されません。
+                    </p>
+                    {isClient ? (
+                      <div className="space-y-2">
+                        <div className="bg-white border border-blue-300 rounded p-3">
+                          <div className="text-xs space-y-1">
+                            <div className="flex justify-between">
+                              <span className="font-medium">Firebase TOTP User ID:</span>
+                              <span className="font-mono text-gray-700">
+                                {totpUserId || 'なし'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="font-medium">Session User ID:</span>
+                              <span className="font-mono text-gray-700">
+                                {sessionUserId || 'なし'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="font-medium">ステータス:</span>
+                              <span className={`px-2 py-1 rounded text-xs ${
+                                totpUserId && sessionUserId && totpUserId === sessionUserId
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-red-100 text-red-800'
+                              }`}>
+                                {totpUserId && sessionUserId && totpUserId === sessionUserId 
+                                  ? '✓ 同期済み' 
+                                  : '⚠️ 不一致または未設定'
+                                }
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-white border border-blue-300 rounded p-3">
+                        <p className="text-sm text-gray-500">読み込み中...</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* TOTP Secret Display */}
               <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
                 <div className="flex items-start space-x-3">
                   <div className="flex-shrink-0">

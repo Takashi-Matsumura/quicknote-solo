@@ -92,7 +92,12 @@ export const getTOTPSecret = (googleProfile?: GoogleAuthProfile): string | null 
 };
 
 export const getTOTPUserId = (googleProfile?: GoogleAuthProfile): string | null => {
-  return EnhancedSecureStorage.getTOTPUserId(googleProfile);
+  try {
+    return EnhancedSecureStorage.getTOTPUserId(googleProfile);
+  } catch (error) {
+    Logger.error('Failed to get TOTP User ID from enhanced storage', error);
+    return null;
+  }
 };
 
 /**

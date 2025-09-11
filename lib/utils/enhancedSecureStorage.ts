@@ -326,7 +326,18 @@ class EnhancedSecureStorage {
       return decryptedText;
     } catch (error) {
       Logger.error('Enhanced decryption failed', error);
-      localStorage.removeItem(key);
+      
+      // UTF-8エラーなど復号化エラーの場合は破損データをクリア
+      if (error instanceof Error && 
+          (error.message.includes('Malformed UTF-8') || 
+           error.message.includes('decrypt') ||
+           error.message.includes('Invalid'))) {
+        Logger.warn('Corrupted encrypted data detected, clearing...', { key });
+        this.clearCorruptedData();
+      } else {
+        localStorage.removeItem(key);
+      }
+      
       return null;
     }
   }

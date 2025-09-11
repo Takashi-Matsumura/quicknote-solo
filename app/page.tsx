@@ -1,7 +1,7 @@
 "use client";
 
 import { FiEdit, FiLogOut } from "react-icons/fi";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 // import { useRouter } from "next/navigation";
 import { logoutTOTP } from "@/lib/auth/session";
 
@@ -10,6 +10,9 @@ import { useAuthFlow } from "@/hooks/useAuthFlow";
 import { useNoteOperations } from "@/hooks/useNoteOperations";
 import { useToastManager } from "@/hooks/useToastManager";
 import { useConfirmDialog } from "@/hooks/useConfirmDialog";
+import { getCurrentTOTPUserId } from "@/lib/firebase/auth";
+import { getTOTPUserId } from "@/lib/auth/session";
+import { SessionManager } from "@/lib/auth/session";
 import { ErrorHandler } from "@/lib/utils/errorHandler";
 
 import SearchBar from "@/components/SearchBar";
@@ -24,6 +27,7 @@ export default function HomePage() {
   const { isAuthenticated } = useAuthFlow();
   // const router = useRouter();
   const [showAppInfoModal, setShowAppInfoModal] = useState(false);
+  const [debugInfo, setDebugInfo] = useState({ totpUserId: '', sessionUserId: '' });
   const {
     notes,
     allTags,
@@ -132,6 +136,29 @@ export default function HomePage() {
     setShowAppInfoModal(true);
   };
 
+  // デバッグ情報を更新
+  useEffect(() => {
+    const updateDebugInfo = () => {
+      // より確実にユーザーIDを取得
+      const currentTotpUserId = getCurrentTOTPUserId();
+      const storedTotpUserId = getTOTPUserId();
+      const sessionUserId = SessionManager.getSession();
+      
+      // いずれかの方法でユーザーIDが取得できれば使用
+      const effectiveUserId = currentTotpUserId || storedTotpUserId || sessionUserId;
+      
+      setDebugInfo({ 
+        totpUserId: effectiveUserId || 'none', 
+        sessionUserId: sessionUserId || 'none' 
+      });
+    };
+
+    updateDebugInfo();
+    // 5秒ごとに更新
+    const interval = setInterval(updateDebugInfo, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
@@ -151,9 +178,18 @@ export default function HomePage() {
           <div className="flex items-center justify-between h-14">
             <div className="flex items-center space-x-3">
               <FiEdit className="text-blue-600 dark:text-blue-400 h-6 w-6" />
-              <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                QuickNote Solo
-              </h1>
+              <div className="flex flex-col">
+                <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                  QuickNote Solo
+                </h1>
+                {/* デバッグ情報表示 */}
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  ID: {debugInfo.totpUserId === 'none' ? '未認証' : `${debugInfo.totpUserId.substring(0, 8)}...`}
+                  {debugInfo.totpUserId !== 'none' && debugInfo.totpUserId !== debugInfo.sessionUserId && (
+                    <span className="text-red-500 ml-2">⚠️ セッション不一致</span>
+                  )}
+                </div>
+              </div>
             </div>
             <div className="flex items-center space-x-2">
               <HeaderLauncher 
