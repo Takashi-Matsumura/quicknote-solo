@@ -437,7 +437,9 @@ export default function EnhancedAuth({ onAuthSuccess, onCancel }: EnhancedAuthPr
         {mode === 'google_signin' && (
           <div className="space-y-6">
             
-            <div ref={googleButtonRef} className="w-full"></div>
+            <div className="flex justify-center">
+              <div ref={googleButtonRef}></div>
+            </div>
             
           </div>
         )}
