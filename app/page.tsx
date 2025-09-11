@@ -1,7 +1,6 @@
 "use client";
 
-import { FiSettings, FiInfo, FiEdit, FiRefreshCw, FiLogOut } from "react-icons/fi";
-import Link from "next/link";
+import { FiEdit, FiLogOut } from "react-icons/fi";
 import { useState } from "react";
 // import { useRouter } from "next/navigation";
 import { logoutTOTP } from "@/lib/auth/session";
@@ -19,6 +18,7 @@ import NoteList from "@/components/NoteList";
 import NoteInputBar from "@/components/NoteInputBar";
 import Toast from "@/components/Toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import HeaderLauncher from "@/components/HeaderLauncher";
 
 export default function HomePage() {
   const { isAuthenticated } = useAuthFlow();
@@ -156,31 +156,14 @@ export default function HomePage() {
               </h1>
             </div>
             <div className="flex items-center space-x-2">
-              <button
-                onClick={handleSync}
-                className="p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                title="同期"
-              >
-                <FiRefreshCw className="h-5 w-5" />
-              </button>
-              <Link
-                href="/settings"
-                className="p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                title="設定"
-              >
-                <FiSettings className="h-5 w-5" />
-              </Link>
-              <button
-                onClick={handleInfoClick}
-                className="p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                title="アプリ情報"
-              >
-                <FiInfo className="h-5 w-5" />
-              </button>
+              <HeaderLauncher 
+                onSync={handleSync}
+                onInfo={handleInfoClick}
+              />
               <button
                 onClick={handleLogout}
                 className="p-2 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                title="logout"
+                title="ログアウト"
               >
                 <FiLogOut className="h-5 w-5" />
               </button>

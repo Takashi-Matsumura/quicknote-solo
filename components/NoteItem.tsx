@@ -4,6 +4,7 @@ import { useState } from "react";
 import { FiBookmark, FiMapPin, FiTrash, FiTag } from "react-icons/fi";
 import type { Note } from "@/lib/models/note";
 import { createMapUrl } from "@/lib/geo/getCurrentPosition";
+import { useFontSize } from "@/contexts/FontSizeContext";
 import FileDisplay from "./FileDisplay";
 
 interface NoteItemProps {
@@ -18,6 +19,7 @@ export default function NoteItem({ note, onPin, onDelete, onEditTags }: NoteItem
   const [tagInput, setTagInput] = useState(note.tags.join(", "));
   const [translateX, setTranslateX] = useState(0);
   const [startX, setStartX] = useState(0);
+  const { getFontSizeClass } = useFontSize();
 
   const handleTouchStart = (e: React.TouchEvent) => {
     setStartX(e.touches[0].clientX);
@@ -104,7 +106,7 @@ export default function NoteItem({ note, onPin, onDelete, onEditTags }: NoteItem
       >
         <div className="flex items-start justify-between mb-2">
           <div className="flex-1 pr-2" style={{ minWidth: translateX < 0 ? '75%' : '80%', maxWidth: translateX < 0 ? '75%' : '80%' }}>
-            <p className="text-gray-900 text-sm break-words leading-relaxed whitespace-pre-wrap">{note.text}</p>
+            <p className={`text-gray-900 ${getFontSizeClass()} break-words leading-relaxed whitespace-pre-wrap`}>{note.text}</p>
             <div className={`flex items-center text-xs text-gray-500 mt-1 ${translateX < 0 ? 'flex-wrap' : ''}`}>
               <span className="flex-shrink-0">{formatDate(note.createdAt)}</span>
               {note.location && (
