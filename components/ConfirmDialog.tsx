@@ -14,7 +14,7 @@ export default function ConfirmDialog({
   isOpen,
   title,
   message,
-  confirmText = "確認",
+  confirmText = "ログアウト",
   cancelText = "キャンセル",
   onConfirm,
   onCancel,

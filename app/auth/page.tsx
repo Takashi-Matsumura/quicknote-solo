@@ -60,7 +60,7 @@ export default function AuthPage() {
             </h1>
             <p className="text-slate-300 text-lg leading-relaxed">
               エンタープライズレベルのセキュリティ<br />
-              <span className="text-emerald-400 font-medium">2層防御認証</span>でログイン
+              <span className="text-emerald-400 font-medium">3層防御認証</span>でログイン
             </p>
           </div>
           
@@ -73,7 +73,7 @@ export default function AuthPage() {
           <div className="text-center mt-8">
             <p className="text-slate-400 text-sm flex items-center justify-center gap-2">
               <HiShieldCheck className="w-4 h-4" />
-              Google OAuth + TOTP による強固な2層認証
+              Google OAuth + TOTP + デバイス認証による3層防御
             </p>
           </div>
         </div>

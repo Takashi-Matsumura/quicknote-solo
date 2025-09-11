@@ -118,11 +118,12 @@ export default function HomePage() {
 
   const handleLogout = () => {
     showConfirmDialog(
-      "ログアウト",
-      "ログアウトしますか？再度アクセスするにはTOTP認証が必要になります。",
+      "logout",
+      "ログアウトしますか？次回ログインはGoogle認証のみで利用できます。",
       () => {
         logoutTOTP();
-        router.push('/auth');
+        // 強制的にページをリロードしてAuthFlowを再実行
+        window.location.href = '/auth';
       }
     );
   };
@@ -179,7 +180,7 @@ export default function HomePage() {
               <button
                 onClick={handleLogout}
                 className="p-2 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                title="ログアウト"
+                title="logout"
               >
                 <FiLogOut className="h-5 w-5" />
               </button>

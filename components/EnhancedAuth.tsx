@@ -422,22 +422,12 @@ export default function EnhancedAuth({ onAuthSuccess, onCancel }: EnhancedAuthPr
   return (
     <div className="w-full">
       <div className="p-8">
-        {/* セキュリティレベル表示 */}
-        <div className="mb-6 bg-gradient-to-r from-emerald-500/20 to-blue-500/20 border border-emerald-500/30 rounded-xl p-4">
-          <div className="flex items-center gap-3">
-            <HiShieldCheck className="w-6 h-6 text-emerald-400" />
-            <div>
-              <h3 className="text-emerald-300 font-bold text-sm">エンタープライズセキュリティ</h3>
-              <p className="text-emerald-200 text-xs">Google OAuth + TOTP による2層防御</p>
-            </div>
-          </div>
-        </div>
 
         <h2 className="text-2xl font-bold text-center mb-8 text-white">
-          {mode === 'google_signin' ? '強化認証ログイン' :
+          {mode === 'google_signin' ? 'login' :
            mode === 'totp_setup' ? 'TOTP認証設定' :
-           mode === 'device_choice' ? 'デバイス設定選択' :
-           mode === 'secret_input' ? 'シークレット入力' :
+           mode === 'device_choice' ? 'TOTP認証' :
+           mode === 'secret_input' ? 'シークレットキー入力' :
            mode === 'totp_verify' ? 'TOTP認証' :
            mode === 'device_registration' ? 'デバイス登録' :
            mode === 'migration' ? 'セキュリティ移行' : '認証'}
@@ -446,32 +436,16 @@ export default function EnhancedAuth({ onAuthSuccess, onCancel }: EnhancedAuthPr
         {/* Google認証画面 */}
         {mode === 'google_signin' && (
           <div className="space-y-6">
-            <div className="text-center mb-6">
-              <p className="text-slate-200 text-lg font-medium mb-2">
-                まずはGoogleアカウントでサインイン
-              </p>
-              <p className="text-slate-400 text-sm">
-                最高レベルのセキュリティで保護されます
-              </p>
-            </div>
             
             <div ref={googleButtonRef} className="w-full"></div>
             
-            <div className="mt-4 p-3 bg-blue-50/10 rounded-lg">
-              <p className="text-xs text-blue-200">
-                <strong>安全な認証フロー:</strong><br />
-                1. Google OAuth認証<br />
-                2. TOTP二要素認証<br />
-                データは全てGoogle UIDで暗号化されます
-              </p>
-            </div>
           </div>
         )}
 
         {/* デバイス選択画面 */}
         {mode === 'device_choice' && (
           <div className="space-y-6">
-            {!googleProfile ? (
+            {!googleProfile && (
               <div className="bg-red-500/20 border border-red-500/30 rounded-xl p-6">
                 <div className="text-center">
                   <HiExclamationTriangle className="w-8 h-8 text-red-400 mx-auto mb-4" />
@@ -485,15 +459,6 @@ export default function EnhancedAuth({ onAuthSuccess, onCancel }: EnhancedAuthPr
                   >
                     Googleサインインに戻る
                   </button>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-green-500/20 border border-green-500/30 rounded-xl p-4 mb-6">
-                <div className="flex items-center gap-3">
-                  <HiCheckCircle className="w-5 h-5 text-green-400" />
-                  <p className="text-green-300 text-sm">
-                    <strong>{googleProfile.name}</strong> としてサインイン済み
-                  </p>
                 </div>
               </div>
             )}
@@ -522,7 +487,7 @@ export default function EnhancedAuth({ onAuthSuccess, onCancel }: EnhancedAuthPr
                 >
                   <HiKey className="w-6 h-6" />
                   <div className="text-left">
-                    <div className="font-bold">新しいTOTP設定を作成</div>
+                    <div className="font-bold">新しくTOTP設定を作成</div>
                     <div className="text-sm opacity-90">QRコードで認証アプリに登録</div>
                   </div>
                 </button>
@@ -566,7 +531,7 @@ export default function EnhancedAuth({ onAuthSuccess, onCancel }: EnhancedAuthPr
         {/* シークレット入力画面 */}
         {mode === 'secret_input' && (
           <div className="space-y-6">
-            {!googleProfile ? (
+            {!googleProfile && (
               <div className="bg-red-500/20 border border-red-500/30 rounded-xl p-6">
                 <div className="text-center">
                   <HiExclamationTriangle className="w-8 h-8 text-red-400 mx-auto mb-4" />
@@ -582,21 +547,12 @@ export default function EnhancedAuth({ onAuthSuccess, onCancel }: EnhancedAuthPr
                   </button>
                 </div>
               </div>
-            ) : (
-              <div className="bg-green-500/20 border border-green-500/30 rounded-xl p-4 mb-6">
-                <div className="flex items-center gap-3">
-                  <HiCheckCircle className="w-5 h-5 text-green-400" />
-                  <p className="text-green-300 text-sm">
-                    <strong>{googleProfile.name}</strong> としてサインイン済み
-                  </p>
-                </div>
-              </div>
             )}
             
             <div className="bg-amber-500/20 border border-amber-500/30 rounded-2xl p-6">
               <div className="flex items-center justify-center gap-3 mb-4">
                 <HiKey className="w-8 h-8 text-amber-400" />
-                <h3 className="text-xl font-bold text-amber-300">既存のシークレットキー入力</h3>
+                <h3 className="text-xl font-bold text-amber-300">既存のキーを入力</h3>
               </div>
               <p className="text-amber-200 text-sm leading-relaxed text-center mb-6">
                 他のデバイスで使用しているTOTPシークレットキーを入力してください
@@ -628,7 +584,7 @@ export default function EnhancedAuth({ onAuthSuccess, onCancel }: EnhancedAuthPr
                   disabled={!secretInput || secretInput.length < 16}
                   className="w-full py-3 px-4 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 disabled:from-gray-600 disabled:to-gray-600 text-white font-semibold rounded-xl transition-all duration-200 disabled:cursor-not-allowed"
                 >
-                  シークレットキーを設定して認証へ進む
+                  シークレットキーを設定
                 </button>
               </div>
             </div>
@@ -706,7 +662,7 @@ export default function EnhancedAuth({ onAuthSuccess, onCancel }: EnhancedAuthPr
         {/* TOTP設定画面 */}
         {mode === 'totp_setup' && (
           <div className="space-y-8">
-            {!googleProfile ? (
+            {!googleProfile && (
               <div className="bg-red-500/20 border border-red-500/30 rounded-xl p-6">
                 <div className="text-center">
                   <HiExclamationTriangle className="w-8 h-8 text-red-400 mx-auto mb-4" />
@@ -720,15 +676,6 @@ export default function EnhancedAuth({ onAuthSuccess, onCancel }: EnhancedAuthPr
                   >
                     Googleサインインに戻る
                   </button>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-green-500/20 border border-green-500/30 rounded-xl p-4 mb-6">
-                <div className="flex items-center gap-3">
-                  <HiCheckCircle className="w-5 h-5 text-green-400" />
-                  <p className="text-green-300 text-sm">
-                    <strong>{googleProfile.name}</strong> としてサインイン済み
-                  </p>
                 </div>
               </div>
             )}
@@ -786,12 +733,27 @@ export default function EnhancedAuth({ onAuthSuccess, onCancel }: EnhancedAuthPr
                   <button
                     onClick={() => handleTokenVerify()}
                     disabled={token.length !== 6 || isLoading}
-                    className="w-full py-3 px-4 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all duration-200"
+                    className="w-full py-4 px-6 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all duration-200"
                   >
                     {isLoading ? '設定中...' : 'TOTP設定を完了'}
                   </button>
                 </div>
               </div>
+            </div>
+            
+            <div className="text-center mt-6">
+              <button
+                onClick={() => {
+                  setMode('device_choice');
+                  setSecret('');
+                  setQrCodeUrl('');
+                  setToken('');
+                  setError('');
+                }}
+                className="w-full py-3 px-4 bg-slate-600 hover:bg-slate-700 text-white font-semibold rounded-xl transition-all duration-200"
+              >
+                戻る
+              </button>
             </div>
           </div>
         )}
@@ -917,24 +879,25 @@ export default function EnhancedAuth({ onAuthSuccess, onCancel }: EnhancedAuthPr
               )}
             </div>
             
-            <div className="flex space-x-3">
+            <button
+              onClick={handleDeviceRegistration}
+              disabled={isLoading}
+              className="w-full py-4 px-6 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 disabled:from-gray-600 disabled:to-gray-600 text-white font-semibold rounded-xl transition-all duration-200 transform hover:scale-105 disabled:transform-none flex items-center justify-center gap-2"
+            >
+              <HiShieldCheck className="w-5 h-5" />
+              このデバイスを登録
+            </button>
+            
+            <div className="text-center mt-6">
               <button
                 onClick={() => {
                   setMode('totp_verify');
                   setDeviceRegistrationInfo({});
                   setError('');
                 }}
-                className="flex-1 py-3 px-4 bg-slate-600 hover:bg-slate-700 text-white font-semibold rounded-xl transition-all duration-200"
+                className="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/30 text-white rounded-xl font-semibold transition-all duration-300 backdrop-blur-sm"
               >
                 キャンセル
-              </button>
-              <button
-                onClick={handleDeviceRegistration}
-                disabled={isLoading}
-                className="flex-1 py-3 px-4 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 disabled:from-gray-600 disabled:to-gray-600 text-white font-semibold rounded-xl transition-all duration-200 transform hover:scale-105 disabled:transform-none flex items-center justify-center gap-2"
-              >
-                <HiShieldCheck className="w-5 h-5" />
-                このデバイスを登録
               </button>
             </div>
           </div>
