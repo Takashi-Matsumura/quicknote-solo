@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { FiDownload, FiTrash2, FiArrowLeft, FiSmartphone, FiEye, FiEyeOff, FiCopy } from "react-icons/fi";
 import Link from "next/link";
+// import { useRouter } from "next/navigation";
 
 import { getAllNotes, clearAllNotes } from "@/lib/db/database";
 import { downloadCsvFile } from "@/lib/export/csv";
@@ -13,6 +14,7 @@ import { initializeAuth } from "@/lib/firebase/auth";
 import { getSpeechRecognitionService } from "@/lib/speech/speechRecognition";
 import Toast from "@/components/Toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
+// import DeviceManagement from "@/components/DeviceManagement";
 import { GoogleAuthService } from '@/lib/auth/googleAuth';
 import EnhancedSecureStorage from '@/lib/utils/enhancedSecureStorage';
 import { getTOTPUserId } from '@/lib/auth/session';

@@ -3,7 +3,7 @@
 import { FiSettings, FiInfo, FiEdit, FiRefreshCw, FiLogOut } from "react-icons/fi";
 import Link from "next/link";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+// import { useRouter } from "next/navigation";
 import { logoutTOTP } from "@/lib/auth/session";
 
 import type { FileAttachment } from "@/lib/models/note";
@@ -22,7 +22,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 
 export default function HomePage() {
   const { isAuthenticated } = useAuthFlow();
-  const router = useRouter();
+  // const router = useRouter();
   const [showAppInfoModal, setShowAppInfoModal] = useState(false);
   const {
     notes,
